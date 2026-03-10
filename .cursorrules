@@ -1,0 +1,55 @@
+# Project Agent Instructions (Cursor)
+
+<!-- This file is auto-loaded by Cursor. Keep it in sync with CLAUDE.md. -->
+
+## Startup Sequence
+
+1. Read `docs/_status.md` - current state and active phase
+2. Read `docs/_queue.md` - work dispatch (what to build, in what order)
+3. Read `docs/_planning_status.md` - are feature docs ready for implementation?
+4. Read the feature doc for your assigned task
+5. Work, following the Definition of Done
+
+## Orchestrator vs Sub-Agent
+
+**If you are the top-level agent** (Composer/Agent mode):
+- You manage the queue, dispatch sub-agents, and handle gates
+- Read `docs/_framework/guide_orchestration.md` for full instructions
+- Dispatch sub-agents matched to task complexity (C1/C2/C3)
+
+**If you were spawned to complete a specific task**:
+- Read the feature doc specified in your task
+- Implement to match User Intent, not just technical specs
+- Follow the Definition of Done (feature doc + standard DoD)
+- Update docs as part of task completion, not as a separate step
+
+## Sub-Agent Model Selection
+
+Use task complexity from `_queue.md` to select models:
+- **C1 (Routine)**: Fastest/cheapest model - scaffolding, config, simple patterns
+- **C2 (Moderate)**: Mid-tier model - typical feature work, integrations
+- **C3 (Complex)**: Most capable model - architecture, cross-cutting, novel problems
+
+See `docs/_framework/guide_complexity_levels.md` for criteria.
+
+## Docs Discipline
+
+- Updating docs is part of completing a task, not a separate step
+- Before marking any task complete, verify the Standard DoD in `_queue.md`
+- Never leave `[PLACEHOLDER]` markers in docs you've worked on
+- Create knowledge entries (`docs/knowledge/gotcha_*.md`) when debugging takes >30 min
+
+## Escalation Policy
+
+**Keep working** (don't stop) for:
+- Minor ambiguity, UX/taste decisions, single blocked task
+
+**Escalate** (document, keep working on other tasks) for:
+- Undocumented architectural decisions, security-sensitive choices, cost implications
+
+## Key Docs
+
+- `docs/_framework/START_HERE.md` - Framework quick start
+- `docs/_framework/guide_orchestration.md` - Orchestrator guide
+- `docs/_framework/guide_complexity_levels.md` - C1/C2/C3 criteria
+- `docs/_framework/guide_docs_compliance.md` - How docs stay current
