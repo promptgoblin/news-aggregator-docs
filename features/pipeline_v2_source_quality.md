@@ -84,6 +84,8 @@ Steps 1-2 run on the HTML we already fetched (no additional network call). Step 
 
 Replace the current flat source list with explicit tiers that reflect each source's role in the pipeline.
 
+**Guiding principle:** Only add AI-specific feeds. No general tech feeds that require us to filter for AI content. If a publication doesn't have an AI-specific RSS feed, skip it — Google News AI will catch their AI stories anyway.
+
 #### Tier 1 — Primary Sources (lab/company blogs)
 
 High trust, always ingest, clean RSS. These are the canonical content sources.
@@ -103,24 +105,22 @@ High trust, always ingest, clean RSS. These are the canonical content sources.
 | Microsoft AI Blog | `microsoft.com/en-us/ai/blog/feed` | Copilot, Azure AI, Foundry — broader than Research |
 | OpenAI News | `openai.com/news/rss.xml` | Acquisitions, policy, company news (complements /blog/) |
 | AWS ML Blog | `aws.amazon.com/blogs/machine-learning/feed/` | Bedrock, SageMaker, enterprise AI |
-| Anthropic News | `raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds/feed_anthropic_news.xml` | Generated RSS — verify reliability |
-| Mistral News | `raw.githubusercontent.com/0xSMW/rss-feeds/main/feeds/feed_mistral_news.xml` | Generated RSS — verify reliability |
 | Stability AI Blog | `stability.ai/blog?format=rss` | Stable Diffusion, open models |
 | Cohere Blog | `txt.cohere.ai/rss/` | Enterprise AI, Aya models |
 
-**No RSS available (skip for now, covered by Google News AI + publications):**
-- Meta AI, xAI, Adobe, Baidu, DeepSeek, 01.AI, Alibaba/Qwen
+**No RSS available (covered by Google News AI + publications):**
+- Meta AI, Anthropic, Mistral, xAI, Adobe, Baidu, DeepSeek, 01.AI, Alibaba/Qwen
 
-These labs' announcements reliably appear in Google News AI and publication feeds within hours. Not worth building custom scrapers when the discovery pipeline catches them anyway.
+These labs' announcements reliably appear in Google News AI and publication feeds within hours. Not worth building custom scrapers or depending on third-party generated RSS feeds maintained by random GitHub users. As direct feeds become available, we add them.
 
 #### Tier 2 — Publication AI Feeds
 
-Medium trust. These have dedicated AI RSS feeds that are pre-filtered. Provides coverage of stories that don't originate from company blogs (lawsuits, policy, acquisitions, independent analysis).
+Medium trust. Only AI-specific feeds — no general tech feeds that require filtering.
 
 **Keep:**
 - The Verge AI (`theverge.com/rss/ai-artificial-intelligence/index.xml`)
 - TechCrunch AI (`techcrunch.com/category/artificial-intelligence/feed/`)
-- MIT Tech Review (`technologyreview.com/feed/` — needs AI topic feed if available)
+- MIT Tech Review (`technologyreview.com/feed/` — general feed, but heavily AI-focused editorially)
 
 **Fix:**
 - Ars Technica AI — change feed URL from `/technology-lab` to `arstechnica.com/ai/feed/`
@@ -128,32 +128,27 @@ Medium trust. These have dedicated AI RSS feeds that are pre-filtered. Provides 
 **Add:**
 | Source | Feed URL | Notes |
 |--------|----------|-------|
-| Google News AI | `news.google.com/rss/topics/CAAqIAgKIhpDQkFTRFFvSEwyMHZNRzFyZWhJQ1pXNG9BQVAB?hl=en-US&gl=US&ceid=US%3Aen` | Catch-all aggregator. Cap at 30 items per poll. Haiku title filter required. |
-| Fast Company AI | `fastcompany.com/section/artificial-intelligence/rss` | Innovation + society angle |
-| Computerworld AI | `computerworld.com/artificial-intelligence/feed/` | Enterprise/IT angle |
-| Wired AI | `wired.com/feed/tag/ai/latest/rss` | Need to verify from server (blocked by WebFetch) |
+| Google News AI | `news.google.com/rss/topics/CAAqIAgKIhpDQkFTRFFvSEwyMHZNRzFyZWhJQ1pXNG9BQVAB?hl=en-US&gl=US&ceid=US%3Aen` | Catch-all aggregator. No title filter needed — it's already AI-scoped. Cap at 50 items per poll. |
+| Fast Company AI | `fastcompany.com/section/artificial-intelligence/rss` | AI-specific section feed |
+| Computerworld AI | `computerworld.com/artificial-intelligence/feed/` | AI-specific section feed |
+| Wired AI | `wired.com/feed/tag/ai/latest/rss` | AI-specific tag feed. Need to verify from server. |
 
-**Drop (not worth the friction):**
+**Drop:**
 - VentureBeat AI — last post January 2026, effectively dead
 - The Information — hard paywall, 403 on RSS
-- NYT AI, FT AI — paywalled, content not extractable
+- NYT AI, FT AI, Guardian AI — paywalled or blocked, and covered by Google News AI
 
-**Do NOT add (too noisy, too slow, or off-topic):**
-- Science News AI, ScienceDaily AI — biweekly cadence, academic focus
-- MIT News — general MIT news, heavy filtering needed
-- The Conversation — mostly off-topic results
-- The Guardian AI — blocked, and covered by Google News AI anyway
+#### Tier 3 — Newsletter Safety Net (3)
 
-#### Tier 3 — Newsletter Safety Net (2 max)
+Kept simple. Same ingestion pipeline as today, plus quality gate. No architectural changes — just trim the list, add quality checks, and ensure we follow source links instead of storing roundup blurbs.
 
-Low priority. Discovery-only role — we use them to find stories we might have missed, not as content sources.
-
-**Keep (2):**
+**Keep (3):**
 - **TLDR AI** — broadest mainstream AI coverage, daily
+- **AI Daily Brief** — excellent curated link lists with direct source URLs per story. Perfect discovery source.
 - **Import AI** — research/niche picks that might not hit mainstream feeds
 
-**Deactivate (9):**
-Alpha Signal, AI Daily Brief, The Batch, The Neuron, Ben's Bites, Superhuman AI, AI Breakfast, The Rundown AI, The Algorithm
+**Deactivate (8):**
+Alpha Signal, The Batch, The Neuron, Ben's Bites, Superhuman AI, AI Breakfast, The Rundown AI, The Algorithm
 
 These are redundant with each other and with our Tier 1+2 feeds. Can reactivate if we find coverage gaps.
 
@@ -163,72 +158,99 @@ These are redundant with each other and with our Tier 1+2 feeds. Can reactivate 
 - Hacker News AI (have) — indie/hacker signal
 - Hacker News AI Labs (have) — lab-specific discussions
 
-### 4. Newsletter Pipeline Changes
+### 4. Newsletter Quality Rules
 
-Newsletters shift from "ingest content" to "discover stories."
+No architectural overhaul — just add these rules to the existing newsletter pipeline:
 
-**Current flow:** Extract stories → fetch article content → create Article → cluster
-**New flow:** Extract story references → check if URL already ingested from another source → if not, fetch + quality gate → create Article → cluster
-
-Key change: if a newsletter mentions a story we already have from an RSS feed, we just note the newsletter mention (source count +1) without creating a duplicate article. The newsletter validates our discovery but doesn't add content.
+1. **Quality gate** — same as RSS. If we can't extract ≥300 chars of real content from the linked URL, mark `low_content` and don't cluster.
+2. **No roundup articles** — if a newsletter item's URL points to another aggregator/roundup instead of a primary source, skip it. Only follow links to actual source articles.
+3. **Don't hallucinate** — if we can't read a story (fetch fails, paywall, etc.), stop. Don't create an article with just the newsletter's one-line summary. Either get the real content or don't ingest it.
+4. **URL dedup before fetch** — check if we already have an article with this URL (resolved or original) from any source. If yes, skip the fetch entirely. This catches overlap with RSS feeds.
 
 ### 5. Google News AI Integration
 
-Google News AI RSS is high-volume (50-100+ items/day). Needs special handling:
+Google News AI RSS is high-volume but already AI-scoped. No Haiku title filter needed.
 
-- **Cap at 30 items per poll** (most recent)
-- **Haiku title filter** — before fetching content, batch article titles through Haiku to filter non-AI stories (Google's AI topic feed still includes tangential tech stories)
-- **URL dedup** — many items will link to articles we already have from direct RSS feeds. Skip those.
-- **Content extraction** — Google News links go through `news.google.com` redirects to the original source. Must follow redirects. Then standard fetch + scrape.do fallback.
-- **Don't over-depend** — this is a catch-all supplement, not the backbone. If Google changes/kills the feed, our Tier 1+2 sources still cover 80%+ of stories.
+- **Cap at 50 items per poll** — enough to catch most stories across a poll cycle
+- **No title filter** — the feed is already AI-specific. Only add non-AI-specific feeds if they have their own AI RSS feed.
+- **URL dedup before fetch** — many items will link to articles we already have from direct RSS feeds. Check resolved URL across all sources before creating a new article. Dedup is fast and local.
+- **Cross-run dedup** — Google News AI may surface a story after our direct RSS feed already ingested it (different timing). Must dedup against articles from previous pipeline runs, not just the current batch.
+- **Content extraction** — Google News links redirect to original sources. Follow redirects, then run the extraction chain.
+- **Not a dependency** — this is a supplement. If Google changes/kills the feed, Tier 1+2 sources still cover 80%+ of stories.
 
-### 6. Dedup Enhancement
+### 6. URL Dedup Enhancement
 
-With more overlapping sources, URL-level dedup becomes more important:
+With overlapping sources, URL-level dedup must work across sources and across pipeline runs.
 
-- **Current:** Dedup by exact `(url, source_id)` pair
-- **New:** Also dedup by resolved URL across sources. If The Verge and Google News AI both link to the same Adobe blog post, ingest it once.
-- Store `resolved_url` on Article model (we partially do this already via `source_metadata`)
-- Check resolved_url before creating new articles
+**Current:** Dedup by exact `(url, source_id)` pair — only prevents the same source from re-ingesting the same URL.
 
-### 7. Cluster Validation (already implemented)
+**New:** Dedup by resolved URL across ALL sources:
+- Before fetching any article content, resolve the URL (follow redirects) and check if any existing article has this resolved URL
+- Store `resolved_url` as a first-class field on Article (currently buried in `source_metadata`)
+- Index `resolved_url` for fast lookups
+- This prevents: Google News AI + The Verge + TLDR AI all ingesting the same Adobe blog post as 3 separate articles
+
+**Dedup is fast and local** — just a DB lookup. The redundancy across sources is fine because we catch it before any expensive operations (content fetch, embedding, clustering).
+
+### 7. Quality Checker as Second Line of Defense
+
+The QC subagent in Event Intelligence currently does subjective quality checks. Expand its role:
+
+- **Combined event detection** — QC should flag when an event's source articles appear to cover different stories (catches any mis-clustering that slips through Stage 2b Haiku validation)
+- **Content coherence** — verify the distilled summary is consistent with all source articles, not just the primary
+- **Fail-safe** — if QC detects a combined event, the event should be split or flagged for re-clustering rather than published
+
+This is the second line of defense after Stage 2b cluster validation. Between quality gate (prevents garbage in), cluster validation (catches bad clusters), and QC (catches bad events), we have three layers.
+
+### 8. Cluster Validation (already implemented)
 
 Stage 2b Haiku validation was deployed on 2026-03-11. Validates multi-article clusters before Event Intelligence. Splits clusters where Haiku identifies distinct stories.
 
-This is a safety net — with better content quality, clusters should form correctly in the first place. The validation catches edge cases.
+Safety net — with better content quality, clusters should form correctly in the first place.
 
 ## Implementation Order
 
 1. **Content quality gate** — quickest win, stops garbage from clustering immediately
-2. **scrape.do fallback** — improves content extraction for bot-blocked sites
-3. **Expand Tier 1 feeds** — add Google AI, MS AI, AWS, Anthropic, Mistral, Stability, Cohere
-4. **Add Tier 2 feeds** — Google News AI (with Haiku filter), Fast Company, Computerworld, Wired, fix Ars Technica
-5. **URL dedup enhancement** — resolved URL dedup across sources
-6. **Trim newsletters** — deactivate 9, keep TLDR AI + Import AI
-7. **Restructure newsletter pipeline** — discovery-only flow
+2. **Extraction chain** — add readability-lxml fallback, then scrape.do when API key available
+3. **URL dedup enhancement** — resolved URL dedup across sources and runs
+4. **Newsletter quality rules** — no roundups, no hallucinated content, URL dedup before fetch
+5. **Expand Tier 1 feeds** — add Google AI, MS AI, AWS, Stability, Cohere, OpenAI News
+6. **Add Tier 2 feeds** — Google News AI, Fast Company, Computerworld, Wired, fix Ars Technica
+7. **Trim newsletters** — deactivate 8, keep TLDR AI + AI Daily Brief + Import AI
+8. **QC enhancement** — combined event detection in quality checker
 
-Steps 1-2 can ship independently. Steps 3-5 are the main source expansion. Steps 6-7 happen after we confirm Tier 1+2 coverage is sufficient.
+Steps 1-4 can ship together as the quality foundation. Steps 5-7 are the source expansion. Step 8 is a safety net improvement.
 
 ## What Doesn't Change
 
 - **HyDE clustering algorithm** — the approach is sound, the problem was input quality
-- **Event Intelligence pipeline** — distiller, scorer, tagger, QC, editor all stay the same
+- **Event Intelligence pipeline** — distiller, scorer, tagger, editor stay the same
+- **Newsletter extraction architecture** — same JMAP + Claude pipeline, just with quality rules added
 - **Dedup post-processing** — still needed for near-duplicate events
 - **Sentiment (Grok)** — unchanged
 - **Frontend** — unchanged
 - **Thresholds** — HYDE_SIM=0.80, EVENT_MATCH=0.75, etc. remain. May revisit after quality gate proves out.
+
+## Source Coverage Strategy
+
+The direction is comprehensive primary feed coverage enhanced over time:
+
+1. **Now:** Lab blogs with RSS + publication AI feeds + Google News AI catch-all + 3 newsletters as safety net
+2. **Ongoing:** As more labs publish RSS feeds (or we find them), add them to Tier 1. The goal is to have direct feeds for every major AI company.
+3. **Google News AI covers the long tail** — any AI story from any publication shows up here. We don't need to individually add every publication with an AI section.
+4. **Newsletters validate coverage** — if a newsletter consistently surfaces stories we missed, that tells us we need a new direct feed for that source.
 
 ## Success Criteria
 
 - Zero HTML-junk articles entering clustering
 - Mis-clustered events drop to <5% (from ~20% observed in first run)
 - Coverage maintained or improved vs. current 23-source setup
-- Newsletter count reduced from 11 to 2 without missing major stories
+- Newsletter count reduced from 11 to 3 without missing major stories
 - scrape.do usage stays under 100 requests/day (cost control)
 
 ## Open Questions
 
 - [ ] scrape.do pricing — confirm per-request cost is acceptable for our volume
-- [ ] Anthropic/Mistral generated RSS feeds — how reliable are these GitHub-hosted feeds? Who maintains them?
 - [ ] Google News AI feed stability — any known rate limits or format changes?
-- [ ] Should we track "discovery source" separately from "content source" on articles? (e.g., "discovered via TLDR AI, content from openai.com")
+- [ ] MIT Tech Review feed — is there an AI-specific topic feed, or just the general feed?
+- [ ] Wired AI feed — need to verify it works from the production server (blocked from local dev by WebFetch)
