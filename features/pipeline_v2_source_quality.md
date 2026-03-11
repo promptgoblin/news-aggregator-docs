@@ -108,10 +108,10 @@ High trust, always ingest, clean RSS. These are the canonical content sources.
 | Stability AI Blog | `stability.ai/blog?format=rss` | Stable Diffusion, open models |
 | Cohere Blog | `txt.cohere.ai/rss/` | Enterprise AI, Aya models |
 
-**No RSS available (covered by Google News AI + publications):**
-- Meta AI, Anthropic, Mistral, xAI, Adobe, Baidu, DeepSeek, 01.AI, Alibaba/Qwen
+**No RSS available — deferred to Phase 2:**
+- Anthropic, Meta AI, Mistral, xAI, Adobe, Baidu, DeepSeek, 01.AI, Alibaba/Qwen
 
-These labs' announcements reliably appear in Google News AI and publication feeds within hours. Not worth building custom scrapers or depending on third-party generated RSS feeds maintained by random GitHub users. As direct feeds become available, we add them.
+These labs don't have RSS feeds. For now, their announcements are covered by Google News AI and publication feeds (typically within hours). In Phase 2, we'll build our own RSS feed generation pipeline to scrape/poll these blogs directly and produce reliable feeds. Don't depend on third-party generated feeds from random GitHub repos — they're unmaintained and unreliable.
 
 #### Tier 2 — Publication AI Feeds
 
@@ -128,7 +128,7 @@ Medium trust. Only AI-specific feeds — no general tech feeds that require filt
 **Add:**
 | Source | Feed URL | Notes |
 |--------|----------|-------|
-| Google News AI | `news.google.com/rss/topics/CAAqIAgKIhpDQkFTRFFvSEwyMHZNRzFyZWhJQ1pXNG9BQVAB?hl=en-US&gl=US&ceid=US%3Aen` | Catch-all aggregator. No title filter needed — it's already AI-scoped. Cap at 50 items per poll. |
+| Google News AI | `news.google.com/rss/topics/CAAqIAgKIhpDQkFTRFFvSEwyMHZNRzFyZWhJQ1pXNG9BQVAB?hl=en-US&gl=US&ceid=US%3Aen` | Catch-all aggregator. Already AI-scoped, no title filter needed. No cap — ingest everything since last poll. Initial bootstrap limited to 30 items. |
 | Fast Company AI | `fastcompany.com/section/artificial-intelligence/rss` | AI-specific section feed |
 | Computerworld AI | `computerworld.com/artificial-intelligence/feed/` | AI-specific section feed |
 | Wired AI | `wired.com/feed/tag/ai/latest/rss` | AI-specific tag feed. Need to verify from server. |
@@ -169,9 +169,10 @@ No architectural overhaul — just add these rules to the existing newsletter pi
 
 ### 5. Google News AI Integration
 
-Google News AI RSS is high-volume but already AI-scoped. No Haiku title filter needed.
+Google News AI RSS is high-volume but already AI-scoped. No Haiku title filter needed. No arbitrary cap.
 
-- **Cap at 50 items per poll** — enough to catch most stories across a poll cycle
+- **No cap** — ingest everything since last poll timestamp. Google curates for AI relevance already, so volume is signal, not noise. Use signal score to rank stories appropriately.
+- **Initial bootstrap** — first poll limited to 30 items to avoid flooding the pipeline with historical backlog.
 - **No title filter** — the feed is already AI-specific. Only add non-AI-specific feeds if they have their own AI RSS feed.
 - **URL dedup before fetch** — many items will link to articles we already have from direct RSS feeds. Check resolved URL across all sources before creating a new article. Dedup is fast and local.
 - **Cross-run dedup** — Google News AI may surface a story after our direct RSS feed already ingested it (different timing). Must dedup against articles from previous pipeline runs, not just the current batch.
@@ -233,12 +234,16 @@ Steps 1-4 can ship together as the quality foundation. Steps 5-7 are the source 
 
 ## Source Coverage Strategy
 
-The direction is comprehensive primary feed coverage enhanced over time:
+The direction is comprehensive primary feed coverage, built up in two phases:
 
-1. **Now:** Lab blogs with RSS + publication AI feeds + Google News AI catch-all + 3 newsletters as safety net
-2. **Ongoing:** As more labs publish RSS feeds (or we find them), add them to Tier 1. The goal is to have direct feeds for every major AI company.
-3. **Google News AI covers the long tail** — any AI story from any publication shows up here. We don't need to individually add every publication with an AI section.
-4. **Newsletters validate coverage** — if a newsletter consistently surfaces stories we missed, that tells us we need a new direct feed for that source.
+**This iteration (v2):** Lab blogs with RSS + publication AI feeds + Google News AI catch-all + 3 newsletters as safety net. Good enough baseline.
+
+**Phase 2:** Build our own RSS feed pipeline for labs without feeds (Anthropic, Meta, Mistral, xAI, etc.). This eliminates Google News AI as a dependency for lab coverage and gives us direct, real-time access to announcements.
+
+**Ongoing principles:**
+- Google News AI covers the long tail — any AI story from any publication shows up here. We don't need to individually add every publication.
+- Newsletters validate coverage — if a newsletter consistently surfaces stories we missed, that tells us we need a new direct feed for that source.
+- Signal score ranks stories appropriately — volume is fine, quality ranking is what matters.
 
 ## Success Criteria
 
@@ -247,6 +252,26 @@ The direction is comprehensive primary feed coverage enhanced over time:
 - Coverage maintained or improved vs. current 23-source setup
 - Newsletter count reduced from 11 to 3 without missing major stories
 - scrape.do usage stays under 100 requests/day (cost control)
+
+## Phase 2: Direct Source Expansion
+
+After this iteration stabilizes, Phase 2 focuses on ramping up direct source coverage — especially for labs without RSS feeds.
+
+**Build our own RSS feed pipeline:**
+- Scrape/poll blog pages for labs that don't publish RSS: Anthropic, Meta AI, Mistral, xAI, Adobe, Baidu, DeepSeek, 01.AI, Alibaba/Qwen
+- Generate reliable RSS-like feeds from these sources (stored internally, not dependent on third parties)
+- Check for new posts on schedule, diff against previous state, emit new items
+- This is a significant engineering effort but eliminates our dependency on Google News AI for lab announcements
+
+**Expand Tier 1 coverage goals:**
+- Every major AI lab should have a direct feed (RSS or our own scraper)
+- Chinese labs are increasingly important — DeepSeek, Qwen, Baidu all releasing significant models
+- Emerging labs and startups that become significant (e.g., AMI Labs after Yann LeCun's launch)
+
+**Adaptive source intelligence (from original plan):**
+- Track which sources break stories first
+- Auto-discover new sources when a company appears in multiple events but has no direct feed
+- Surface coverage gaps to inform which scrapers to build next
 
 ## Open Questions
 
