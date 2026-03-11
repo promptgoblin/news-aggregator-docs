@@ -50,20 +50,35 @@ Articles must pass a quality check before entering the clustering pipeline. No m
 - Article still exists in DB for URL dedup purposes (so we don't re-fetch it)
 - Can be upgraded later if content becomes available (e.g., scrape.do retry)
 
-### 2. scrape.do Fallback for Content Extraction
+### 2. Extraction Chain (fix content extraction failures)
 
-When the primary fetch (httpx + trafilatura) returns junk or fails, retry with scrape.do for known-difficult sites.
+Current extraction is trafilatura-or-nothing. NVIDIA Blog and Microsoft Research have content IN the HTML but trafilatura fails on their WordPress/custom markup (inline styles, `<div>` wrappers, `<figure>` blocks). The Verge and Wired are bot-blocked entirely. Different problems need different tools.
 
-**Flow:**
-1. Primary fetch: httpx + trafilatura (free, fast) — same as today
-2. Quality check on result
-3. If quality check fails AND we have a scrape.do API key → retry via scrape.do
-4. Quality check again
-5. If still fails → mark as `low_content`
+**Extraction chain (cheapest → most expensive):**
 
-**Config:** `SCRAPE_DO_API_KEY` env var. If not set, skip fallback (graceful degradation).
+```
+1. trafilatura              → best for clean HTML, fast, free
+2. readability-lxml         → Mozilla Readability algorithm, handles messy WordPress/blog layouts
+3. scrape.do                → renders JS, bypasses bot-blocking, handles paywalls. Costs per request.
+4. fail → mark low_content
+```
 
-**Use sparingly** — scrape.do has per-request cost. Only invoke when primary fetch demonstrably fails. Track usage.
+Steps 1-2 run on the HTML we already fetched (no additional network call). Step 3 is a separate request through scrape.do's rendering pipeline.
+
+**Implementation in `fetch_article_content()`:**
+1. Fetch HTML via httpx (same as today)
+2. Try trafilatura on the HTML
+3. Quality check: ≥300 chars of real text, not primarily HTML tags?
+4. If fails → try `readability-lxml` on the same HTML (different extraction algorithm, often succeeds where trafilatura fails — it's what Firefox Reader View uses)
+5. Quality check again
+6. If fails AND `SCRAPE_DO_API_KEY` is set → fetch via scrape.do (renders JS, bypasses blocks), then extract with trafilatura + readability-lxml
+7. If still fails → return None, let quality gate mark as `low_content`
+
+**Why readability-lxml matters:** NVIDIA Blog stores article text inside `<span style="font-weight: 400;">` tags. Trafilatura sees styled markup and gives up. Readability uses content density heuristics (text-to-tag ratio per block) and correctly identifies the article body. This alone would have fixed ~50% of the extraction failures in the first production run (NVIDIA, Microsoft Research) without needing scrape.do.
+
+**scrape.do config:** `SCRAPE_DO_API_KEY` env var. If not set, chain stops at step 5 (graceful degradation). Use sparingly — only when both local extractors fail. Track per-day usage.
+
+**New dependency:** `readability-lxml` (add to pyproject.toml)
 
 ### 3. Restructure Source Tiers
 
