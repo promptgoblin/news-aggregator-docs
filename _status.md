@@ -1,26 +1,48 @@
 # Project Status
 
-**Last Updated**: 2026-03-10
+**Last Updated**: 2026-03-23
 
 ## Active Phase
 **Phase**: Phase 2 — Foundation
-**Phase Status**: In Progress — Pipeline live, enrichment and frontend maturing
+**Phase Status**: In Progress — Pipeline running in production, frontend feature-complete, security hardened
 
 ## Current Session
 
-**Working On**: Event enrichment (sentiment analysis), frontend polish, data quality
-**Status**: Secondary categories, Grok sentiment, newsletter URL resolution, sortable UI all shipped
-**Blocked By**: Nothing
+**Working On**: Docs sync, bug fixes, production polish
+**Status**: All major features shipped and deployed. Security audit items resolved.
 
 ## Recent Changes
 
+### 2026-03-12 — 2026-03-23
+
+- **Signal score filter**: Tappable number buttons (5–9) to filter minimum signal score, wired to RSS feed
+- **RSS feed**: Full-content RSS endpoint with details table, mobile-friendly HTML
+- **Bookmarks/save**: Save events for later, bookmark filter inline under Read Status in sidebar
+- **Day group headers + infinite scroll**: Feed grouped by day with styled headers, loads more on scroll
+- **Default sort**: Daily top (group by day desc, score desc within day)
+- **Security hardening (two rounds)**:
+  - Open redirect fix, rate limiting, CORS, security headers, secrets cleanup
+  - Disable FastAPI docs in prod, escape ILIKE wildcards, admin authz (`require_admin`), env filtering in agent entrypoint
+  - Pin `claude-agent-sdk` version, alembic env var override for DB creds
+  - `.env.prod` chmod 600 on server
+  - Accepted risk: non-root Docker USER (not applied)
+- **Pipeline fixes**: Advisory lock for concurrent runs, zero-norm embedding guard, datetime timezone handling, cluster ID collision fix, post-clustering embedding verification, consent/cookie page detection
+- **Google News URL decoding** for proper article fetching
+- **Mobile improvements**: Read/unread toggle on mobile, mobile-friendly detail tables (stacked cards)
+- **Sidebar bug fix**: Use `window.location.search` to avoid stale `useSearchParams` during transitions; include `score_min` and `bookmarks` in URL filter detection
+
+### 2026-03-11
+
+- **User auth via DiscourseConnect SSO**: Full sign-in/sign-out flow. JWT session cookies, AuthProvider context.
+- **Discuss on Forum workflow**: "Discuss" button creates Discourse topics in AI News category (cat 8). Race condition protection via `SELECT ... FOR UPDATE`.
+- **Related events via cosine similarity**: `hyde_embedding` cosine distance query, top 2 similar events.
+- **Read/unread tracking**: Server-side read state, eye icon toggle, filter by All/Unread/Read.
+- **Save filter preferences**: Persist current filters to backend, auto-load on fresh visits.
+- **Search/filter interaction**: Search ignores all filters, sorts newest. Switching filters clears search.
+
 ### 2026-03-10
 
-- **Secondary category system**: Events can now have an optional `secondary_category` for cross-category discoverability. API filters match on either primary or secondary category. Tagger runbook updated with guidance on when to assign secondary categories.
-- **Newsletter URL resolution at ingestion**: `fetch_article_content()` now captures the resolved URL after following redirects. Beehiiv/TLDR/Alpha Signal tracking URLs are resolved to real destination URLs at ingestion time. Deduplication checks both original and resolved URLs.
-- **Grok sentiment analysis live**: Pipeline Step 5 uses xAI Responses API with `x_search` tool (model: `grok-4-1-fast-reasoning`) for real X post search. Runs on events scored >= 8. Structured output: handle/name/role/stance/reaction/context/url.
-- **Frontend improvements**: Sortable column headers (Signal, Sources, Posted — click to sort, click again to toggle direction). Removed auto-scroll on re-sort (highlight persists without scrolling). Tracking URLs no longer stored — resolved at ingestion.
-- **Data cleanup**: 28/31 beehiiv URLs resolved to real destinations. Score < 6 events archived. Source labels now derived from resolved URL domain.
+- **Secondary categories**, **newsletter URL resolution**, **Grok sentiment analysis**, **sortable columns**, **data cleanup** (see git log for details)
 
 ## Where We Are
 - **Phase 1 PASSED** — all prompts validated on real data
@@ -40,15 +62,31 @@
   - Article content extraction uses `trafilatura` (fast, no LLM needed)
   - 27 sources live: 7 company blogs, 4 publications, 2 dev blogs, 11 newsletters, 2 HN feeds
   - ~212 articles ingested, ~113 active events from first pipeline run
-- **Clustering — MAJOR ITERATION** (see [What Failed](#what-failed)):
-  - v1 (union-find + pairwise LLM): Mega-cluster problem — all articles merged into 1 cluster
-  - v2 (HyDE): Haiku normalizes articles → embed normalized summaries → similarity graph → connected components. In testing.
-- **Secondary categories**: Optional `secondary_category` on events for cross-category discoverability. API filters match either primary or secondary.
-- **Newsletter URL resolution**: Tracking URLs (beehiiv, TLDR, Alpha Signal) resolved to real destinations at ingestion. Dedup checks both original and resolved URLs.
-- **Grok sentiment analysis (Step 5)**: xAI Responses API + `x_search` tool (`grok-4-1-fast-reasoning`). Runs on events scored >= 8. Structured X post sentiment output.
-- **Frontend**: Sortable column headers (Signal, Sources, Posted). No auto-scroll on re-sort.
+- **Clustering — HyDE (v3)**: Haiku normalizes articles → embed normalized summaries → similarity graph (0.80 threshold) → connected components. Working well.
+- **Secondary categories**: Optional `secondary_category` on events for cross-category discoverability.
+- **Newsletter URL resolution**: Tracking URLs resolved at ingestion. Dedup checks both original and resolved URLs.
+- **Grok sentiment analysis (Step 5)**: xAI Responses API + `x_search` tool. Runs on events scored >= 8.
+- **Frontend — DEPLOYED at news.promptgoblins.ai**:
+  - Next.js app with SSR, category/tag filtering, time range, sort controls
+  - EventModal with full event detail, discuss button, similar events
+  - DiscourseConnect SSO auth (sign in via forum)
+  - Read/unread tracking with eye toggle on every row
+  - Bookmarks/save feature with sidebar filter
+  - Signal score filter (tappable number buttons, 5–9)
+  - Day group headers with infinite scroll
+  - Full-content RSS feed endpoint
+  - Save filter preferences to backend
+  - Search (ignores filters, sorts newest)
+  - Compact/summary view toggle
+  - Theme toggle (light/dark)
+  - Mobile-friendly: stacked detail cards, responsive controls
+- **Forum integration — LIVE**:
+  - Discuss button creates Discourse topics with markdown-formatted summary + permalink
+  - Race condition protection via `SELECT ... FOR UPDATE`
+  - AI News category (cat 8) restricted to staff-only topic creation
+  - `news` Discourse user with API key for topic creation
 - **Model decisions solidified**:
-  - All distillation now Sonnet (was Opus for complex events — unnecessary when clustering is correct)
+  - All distillation now Sonnet
   - Haiku for normalization, extraction, tagging
   - Sonnet for distillation, scoring, quality checking, editing
 - **Removed** (replaced by Agent SDK):
@@ -64,27 +102,18 @@
 
 **Root cause**: Union-Find with transitive closure. When GPT-4o-mini verified pairwise article pairs (title-only, YES/NO), the transitive property of union-find caused chain reactions: A↔B + B↔C → A,B,C merged, even when A and C were unrelated. With 155 articles and a generous candidate threshold, this collapsed everything.
 
-**What we tried**:
-- Adjusting thresholds: At 0.80-0.85 auto-merge → still one cluster. At 0.90 → 153 clusters from 155 articles (almost no clustering). No sweet spot existed.
-- Title-only embeddings: Better than full content (more focused on the event) but insufficient — the similarity landscape was too flat with no clear bimodal separation.
-- All-Opus distillation: Thought Sonnet was producing poor output for low-signal events. Actually, the mega-cluster was the cause — the agent processed high-importance stories first and got lazy/efficient on the rest.
-
 **Key insight**: Embedding cosine similarity is a blunt instrument for event clustering. The gap between "same event" and "related but different" is too narrow for a clean threshold. Raw articles of different lengths/styles produce incomparable embeddings.
 
-### Clustering v2: LLM Sub-Clustering (Proposed, Replaced)
+### Clustering v3: HyDE (Current — Working)
 
-Intermediate approach: embedding candidate groups → GPT-4o-mini sub-clustering per group. Replaced by HyDE before testing because HyDE is simpler and attacks the root cause (embedding quality) rather than patching around it.
+**Approach**: Normalize articles through Haiku BEFORE embedding. Each article becomes a structured "title + key facts" summary. Same event → nearly identical summaries → nearly identical embeddings. The threshold landscape becomes bimodal.
 
-### Clustering v3: HyDE (Current)
-
-**Approach**: Normalize articles through Haiku BEFORE embedding. Each article becomes a structured "title + key facts" summary. Same event → nearly identical summaries → nearly identical embeddings. The threshold landscape should become bimodal.
-
-**Status**: Code written, needs first test run.
+**Status**: Working well in production. Thresholds: HYDE_SIM=0.80, EVENT_MATCH=0.75, EVENT_MATCH_DAYS=14, DEDUP=0.85.
 
 ## Architecture
 
 ```
-CRON (2x daily) → orchestrator.py
+CRON (3x daily: 6am, 2pm, 10pm UTC) → orchestrator.py
   ├─ Poll newsletters (Fastmail JMAP) → extract links → fetch articles → store
   ├─ Poll RSS feeds → store articles
   ├─ HyDE Clustering
@@ -108,12 +137,18 @@ Data flows through the database. Each agent reads/writes via MCP tools.
 1. **Comprehensive Discovery** — don't miss stories. Cover all niches/industries since users filter. Newsletters are highest priority source (already curated).
 2. **Event Intelligence** — the core product. An "event" is the canonical unit, not a news story. Multiple sources clustered and distilled into one perfectly consumable record. This precision is what makes us hard to replicate.
 
+- **Security hardening — COMPLETE**:
+  - FastAPI docs disabled in prod, ILIKE wildcards escaped, admin authz enforced
+  - Open redirect fix, rate limiting, CORS headers, secrets cleanup
+  - Agent entrypoint env filtering, `claude-agent-sdk` pinned, alembic env override
+  - `.env.prod` chmod 600 on server
+  - Accepted risk: non-root Docker USER, JWT iss/aud, CSP nonces
+
 ## Next Steps
-1. Validate HyDE cluster quality on larger article volumes
-2. Tune CLUSTER_SIM_THRESHOLD based on actual similarity distribution
-3. Evaluate Grok sentiment analysis quality and coverage
-4. Resolve remaining 3/31 beehiiv tracking URLs
-5. Production deployment
+1. Add more sources for broader coverage
+2. Monitor and tune similar events quality (cosine similarity on hyde_embedding)
+3. Consider email digest / notification features
+4. Pipeline v2 source quality improvements (extraction chain, quality gate)
 
 ## Active Documents
 - Plan: [plan/PLAN.md](plan/PLAN.md)

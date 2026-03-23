@@ -273,6 +273,19 @@ After this iteration stabilizes, Phase 2 focuses on ramping up direct source cov
 - Auto-discover new sources when a company appears in multiple events but has no direct feed
 - Surface coverage gaps to inform which scrapers to build next
 
+## Phase 3: Automated Fact-Checking Audit
+
+Once the pipeline is dialed in and producing consistent quality, run an agent-based spot check audit:
+
+- Agent visits published events on the live site, reads the distilled content
+- Fetches and reads the original source articles linked to each event
+- Fact-checks the distilled summary, detail table, and "what this means" against the actual sources
+- Flags any hallucinated facts, misattributions, numerical errors, or claims not supported by sources
+- Particularly important for events built from consent-page or low-quality article content that slipped through earlier pipeline versions
+- Can run as a periodic job (e.g., weekly) or as a one-time cleanup pass after major pipeline changes
+
+This is the final trust layer — everything before it prevents bad content from entering; this catches anything that got through anyway.
+
 ## Open Questions
 
 - [ ] scrape.do pricing — confirm per-request cost is acceptable for our volume
