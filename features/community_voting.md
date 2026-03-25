@@ -2,7 +2,7 @@
 
 ---
 type: feature
-status: planning
+status: implemented
 complexity: C3
 tags: [voting, reputation, signal-score, discourse, community]
 depends_on: [forum_auth, admin_score_adjust]
@@ -30,9 +30,10 @@ Let users up/down vote events to organically adjust signal scores, weighted by t
 3. If enough users vote the same way, consensus threshold triggers faster movement
 4. User can change their vote (switches direction), but cannot remove it
 
-## Status: Planning
+## Status: Implemented
 **Started**: 2026-03-23
-**Last Updated**: 2026-03-23
+**Shipped**: 2026-03-25
+**Last Updated**: 2026-03-25
 
 ## Design Decisions (from planning discussion)
 

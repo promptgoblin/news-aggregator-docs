@@ -2,9 +2,9 @@
 
 ---
 type: feature
-status: planning
+status: implemented
 complexity: C2
-tags: [auth, discourse, oauth2, preferences, ux]
+tags: [auth, discourse, sso, preferences, ux, reputation]
 depends_on: [production_deployment]
 required_by: [discourse_integration]
 ---

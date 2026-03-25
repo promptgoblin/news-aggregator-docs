@@ -1,17 +1,29 @@
 # Project Status
 
-**Last Updated**: 2026-03-23
+**Last Updated**: 2026-03-25
 
 ## Active Phase
 **Phase**: Phase 2 — Foundation
-**Phase Status**: In Progress — Pipeline running in production, frontend feature-complete, security hardened
+**Phase Status**: In Progress — Pipeline running, community voting live, preparing for event calendar feature
 
 ## Current Session
 
-**Working On**: Docs sync, bug fixes, production polish
-**Status**: All major features shipped and deployed. Security audit items resolved.
+**Working On**: Event calendar feature (next)
+**Status**: All Phase 2 features shipped. Community voting, admin tools, security hardened. Ready for new features.
 
 ## Recent Changes
+
+### 2026-03-23 — 2026-03-25
+
+- **Community voting**: Up/down vote on events with reputation-weighted scoring. Diminishing returns curve (hard to push 9→10), consensus bonus, membership scaling. Scores become fractional (2 decimal) when voted. Vote buttons after summary section.
+- **Admin tools**: Score adjust (+1/-1 with required reason for prompt tuning dataset), category change (dropdown), source attribution (shows which feed surfaced each article)
+- **Share button**: Copy permalink, share to X, share to LinkedIn. In modal footer and permalink page.
+- **Modal persistence**: Event slug in URL (`?event=slug`) survives browser refresh
+- **Sentiment Pass 2**: Re-checks high-scoring events with no X discussion after 24h. Fixed Grok prompt hedging "Limited" when reactions were found.
+- **Opinion-vs-fact guardrails**: Distiller, editor, QC prompts now require attribution for opinion/analysis articles
+- **Bug fixes**: Day headers on week/month (flat list now), mobile search zoom (16px input), duplicate day headers (Map merge), sidebar stale searchParams
+- **Security (round 3)**: Admin from Discourse admin flag (dynamic, not hardcoded), HTML sanitization on admin inputs, UUID validation, slug validation, `is_admin` on User model synced from SSO
+- **Admin auth**: Dynamic from Discourse — whoever is admin on the forum is admin on AI Signal. No hardcoded IDs.
 
 ### 2026-03-12 — 2026-03-23
 
@@ -65,7 +77,17 @@
 - **Clustering — HyDE (v3)**: Haiku normalizes articles → embed normalized summaries → similarity graph (0.80 threshold) → connected components. Working well.
 - **Secondary categories**: Optional `secondary_category` on events for cross-category discoverability.
 - **Newsletter URL resolution**: Tracking URLs resolved at ingestion. Dedup checks both original and resolved URLs.
-- **Grok sentiment analysis (Step 5)**: xAI Responses API + `x_search` tool. Runs on events scored >= 8.
+- **Grok sentiment analysis (Step 5)**: xAI Responses API + `x_search` tool. Runs on events scored >= 8. Two-pass system: Pass 1 at event creation, Pass 2 re-checks after 24h if no discussion found.
+- **Community voting — LIVE**:
+  - Reputation-weighted up/down votes (trust level + likes from Discourse)
+  - Diminishing returns curve, consensus bonus, membership scaling
+  - Scores become fractional (2 decimal) when voted, integer otherwise
+  - Community adjustment capped at ±2.0 points
+- **Admin tools — LIVE**:
+  - Score adjust (+1/-1 with required reason, stored for prompt tuning)
+  - Category change (dropdown of all valid categories)
+  - Source attribution (which feed surfaced each article)
+  - Admin status synced dynamically from Discourse admin flag
 - **Frontend — DEPLOYED at news.promptgoblins.ai**:
   - Next.js app with SSR, category/tag filtering, time range, sort controls
   - EventModal with full event detail, discuss button, similar events
@@ -73,13 +95,16 @@
   - Read/unread tracking with eye toggle on every row
   - Bookmarks/save feature with sidebar filter
   - Signal score filter (tappable number buttons, 5–9)
-  - Day group headers with infinite scroll
+  - Day group headers with infinite scroll (flat list on week/month)
   - Full-content RSS feed endpoint
   - Save filter preferences to backend
   - Search (ignores filters, sorts newest)
+  - Share button (copy link, X, LinkedIn)
+  - Community vote buttons (after summary section)
+  - Modal persists through refresh (slug in URL)
   - Compact/summary view toggle
   - Theme toggle (light/dark)
-  - Mobile-friendly: stacked detail cards, responsive controls
+  - Mobile-friendly: stacked detail cards, responsive controls, 16px inputs
 - **Forum integration — LIVE**:
   - Discuss button creates Discourse topics with markdown-formatted summary + permalink
   - Race condition protection via `SELECT ... FOR UPDATE`
@@ -126,8 +151,9 @@ CRON (3x daily: 6am, 2pm, 10pm UTC) → orchestrator.py
   │   ├─ Tagger [haiku] (primary + optional secondary category)
   │   ├─ Quality Checker [sonnet]
   │   └─ Editor [sonnet]
-  ├─ Sentiment Analysis [grok-4-1-fast-reasoning] (events scored >= 8)
+  ├─ Sentiment Pass 1 [grok-4-1-fast-reasoning] (events scored >= 8)
   │   └─ xAI Responses API + x_search → structured X post sentiment
+  ├─ Sentiment Pass 2 (re-check events with no discussion after 24h)
   └─ Post-processing dedup (pgvector, >0.85 auto-merge)
 ```
 
@@ -145,10 +171,10 @@ Data flows through the database. Each agent reads/writes via MCP tools.
   - Accepted risk: non-root Docker USER, JWT iss/aud, CSP nonces
 
 ## Next Steps
-1. Add more sources for broader coverage
-2. Monitor and tune similar events quality (cosine similarity on hyde_embedding)
-3. Consider email digest / notification features
-4. Pipeline v2 source quality improvements (extraction chain, quality gate)
+1. Event calendar feature
+2. Prompt tuning from admin adjustment data (~2 weeks of collection)
+3. Add more sources for broader coverage
+4. Consider email digest / notification features
 
 ## Active Documents
 - Plan: [plan/PLAN.md](plan/PLAN.md)
