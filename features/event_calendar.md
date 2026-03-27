@@ -41,14 +41,19 @@ A filterable calendar of AI conferences, meetups, hackathons, and local events. 
 
 | Type | Description | Examples |
 |------|-------------|---------|
-| **AI Conference** | Dedicated AI/ML conferences | GTC, NeurIPS, ICML, ICLR, CVPR, AAAI, AI World's Fair |
-| **AI Track** | Tech conferences with significant AI content | AWS re:Invent, Dreamforce, CES, WWDC, Google I/O, GitHub Universe |
-| **Vendor Event** | Company-organized AI events, mini-conferences | DigitalOcean AI Day, Anthropic meetups, startup demo days |
-| **Community Event** | Local meetups, user groups, community-organized | SF AI Meetup, local ML reading groups |
-| **Hackathon** | Cross-cuts all levels; standalone label | GTC hackathons, standalone AI hackathons, offsite hackathons at conferences |
-| **University Event** | Public talks, seminars, workshops from university AI labs | Stanford HAI talks, MIT CSAIL seminars (must be open to public) |
+| **AI Conference** | Dedicated AI event, any size, any organizer. The common thread: this event is about AI. | GTC, NeurIPS, ICML, LangChain Interrupt, Databricks Data+AI Summit, AI Engineer World's Fair, AI Dev 26, AI in Finance Summit, DigitalOcean AI Day |
+| **AI Track** | Broad tech conference with significant AI content — enough for an AI practitioner to justify 1+ days of relevant content. | AWS re:Invent, Dreamforce, CES, WWDC, Google I/O, GitHub Universe, Web Summit Vancouver |
+| **Community Event** | Local meetups, user groups, community-organized gatherings. Informal, often recurring. | SF AI Engineers, AI Tinkerers, NYC AI/ML Conversations, ML Networking and Drinks |
+| **Hackathon** | Cross-cuts all types; standalone filterable label. | GTC hackathons, standalone AI hackathons, offsite hackathons, PokeeClaw, AICamp hackathons |
+| **University Event** | Public talks, seminars, workshops from university AI labs. | Stanford HAI talks, MIT CSAIL seminars (must be open to public) |
 
-**Hackathon** is a separate filterable label that can co-exist with a parent event. "GTC Hackathon" is tagged as both a hackathon and associated with the GTC conference.
+**Classification rubric:**
+- If the event's **primary purpose is AI content/community** → `ai_conference` (regardless of whether the organizer is a company, startup, or nonprofit — GTC is NVIDIA's event but it's an AI conference)
+- If the event is a **broad tech conference with AI tracks** → `ai_track`
+- If the event is **informal, recurring, community-organized** → `community_event`
+- No `vendor_event` type — the vendor vs. non-vendor distinction doesn't help users. Scale, location, and cost filters handle that.
+
+**Hackathon** is a separate filterable label that can co-exist with any type. "GTC Hackathon" is tagged as both a hackathon and associated with the GTC conference.
 
 **Eligibility rule**: Only include events open to the public. Exclude student/faculty-only events. Every event must have: who can attend + cost.
 
@@ -162,7 +167,7 @@ class CalendarEvent(Base):
     id: Mapped[uuid.UUID]
     name: Mapped[str]
     description: Mapped[str | None]
-    event_type: Mapped[str]  # ai_conference, ai_track, vendor_event, community_event, university_event
+    event_type: Mapped[str]  # ai_conference, ai_track, community_event, university_event
     is_hackathon: Mapped[bool]  # cross-cutting label, can co-exist with any type
     parent_event_id: Mapped[uuid.UUID | None]  # e.g., GTC Hackathon → GTC
     start_date: Mapped[date]
