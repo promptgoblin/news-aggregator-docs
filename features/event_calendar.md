@@ -75,17 +75,35 @@ Sourcing is the product. The calendar UI and geo-search are solved problems. The
 
 ### Tier 3 — Local & Community Events (high volume, highest differentiation)
 
-This is the most underserved and most valuable tier.
+This is the most underserved and most valuable tier. Also the hardest to curate.
+
+**The curation problem (2026-03-27):**
+Meetup and Eventbrite are littered with garbage: grifter webinars ("passive income with ChatGPT"), fake expert workshops ($3,000 bullshit from bullshitters), product/service promotion disguised as meetups, and cringe "AI thought leader" events from consultants using meetups for lead gen. Automated discovery from these platforms produces unacceptable noise. An LLM cannot reliably distinguish a legit builder meetup from a grifter's lead gen funnel — the difference is cultural, not textual.
+
+**Decision: No automated local event discovery from aggregator platforms.** No Meetup API. No Eventbrite. Local events flow through human-curated channels only.
 
 **Discovery sources (priority order):**
-1. **Grok X search (xAI API)** — per-metro monthly sweeps. X is where local events get announced. Use existing Grok API (same as news sentiment).
-2. **Community submissions** — the flywheel. Once people check the calendar, they'll want their events listed. Discourse SSO + simple form + admin approval queue. Becomes the primary growth driver over time.
-3. **Meetup API** — add later if Grok + submissions leave gaps. Requires Meetup Pro ($30/mo). GraphQL API supports keyword + lat/lon + radius search. Defer until we validate the gap.
-4. **Lu.ma** — monitor `luma.com/ai` category manually or via light scraping. Major AI community calendars (Bond AI, The AI Collective) are rich sources. No discovery API — organizer-only. Consider following their community calendars on X (Grok catches these).
-5. **University AI lab talks** — add sources as we discover them through research. University AI bulletin boards, lab event pages.
+1. **Community submissions (primary)** — the flywheel. Discourse SSO + simple form + admin approval queue. Submitters are our community (builders), so they self-select quality. Becomes the primary growth driver over time.
+2. **Grok X search (xAI API)** — per-metro sweeps to find events from real companies, startups, and builder communities. Must include anti-grifter instructions in prompt. All Grok-discovered local events go through admin approval, never auto-approved.
+3. **Lu.ma** — higher quality than Meetup/Eventbrite at a glance. Monitor `luma.com/ai` category manually. No discovery API (organizer-only). Consider following community calendars on X (Grok catches announcements). Revisit if they open a discovery API.
+4. **University AI lab talks** — add sources as we discover them through research. University AI bulletin boards, lab event pages. Include only events open to the public (not student/faculty-only).
 
-**Per-metro search approach:**
-Start with 15 tech-weighted metros: SF/Bay Area, NYC, Seattle, Austin, LA, Boston, Chicago, Denver/Boulder, DC, Miami, Atlanta, Dallas/Fort Worth, London, Toronto, Berlin. Monthly Grok sweeps per city.
+**Per-metro Grok search:**
+Start with 15 tech-weighted metros: SF/Bay Area, NYC, Seattle, Austin, LA, Boston, Chicago, Denver/Boulder, DC, Miami, Atlanta, Dallas/Fort Worth, London, Toronto, Berlin. Monthly sweeps per city.
+
+**What qualifies as a local event:**
+- Startup-organized AI events and meetups (e.g., OpenClaw meetup with the founder)
+- Company-hosted open events (e.g., DigitalOcean AI day)
+- Builder/hacker community meetups (people actually doing things)
+- University lab public talks and seminars
+- Local hackathons (standalone or offsite at conferences)
+
+**What does NOT qualify:**
+- Grifter webinars and "make money with AI" events
+- Overpriced workshops from unqualified "experts"
+- Product/service promotion disguised as meetups
+- Consultants using meetups for lead generation
+- Events where the organizer is posturing as an AI authority without real credentials
 
 ### Cross-Cutting
 
@@ -108,12 +126,13 @@ Events change dates, get canceled, change venues. Stale data is worse than missi
 - API reportedly "deprecated and unsupported" as of 2025
 - **Decision: Skip entirely**
 
-### Meetup — Viable, Paywalled
+### Meetup — Viable, Paywalled, Trash Content
 - GraphQL API supports keyword + location (lat/lon + radius) search
 - Rich event data (title, date, venue, description, cost, RSVP counts, group info)
 - **Requires Meetup Pro subscription (~$30/mo)** just to register an OAuth app
 - No free tier. Rate limits undocumented.
-- **Decision: Defer. Validate Grok + submissions first. Add if local coverage gap exists.**
+- **Content quality is abysmal** — dominated by grifter webinars, fake expert workshops, lead gen meetups, and "passive income with AI" garbage. Signal-to-noise ratio makes automated discovery impractical.
+- **Decision: Skip. Not worth $30/mo for content we'd reject 90%+ of.**
 
 ### Lu.ma — Great Data, No Discovery API
 - Official API is organizer-only (manage your own events, no search/browse)
@@ -159,23 +178,76 @@ class CalendarEvent(Base):
     is_virtual: Mapped[bool]
     tags: Mapped[list[str]]  # reuse existing tag taxonomy
     source: Mapped[str]  # where we found it
+    host_name: Mapped[str | None]  # organizer/host name (for trust tracking)
+    host_id: Mapped[uuid.UUID | None]  # FK to event_hosts table
     submitted_by: Mapped[int | None]  # discourse user id, if community-submitted
-    status: Mapped[str]  # active, canceled, pending_approval
+    status: Mapped[str]  # active, canceled, pending_approval, rejected
+    approval_notes: Mapped[str | None]  # admin notes on approve/reject (builds training data)
+    approved_by: Mapped[int | None]  # admin discourse user id
+    approved_at: Mapped[datetime | None]
     ai_track_notes: Mapped[str | None]  # for AI Track type: what AI content is featured
     last_confirmed: Mapped[datetime | None]  # last freshness check
     created_at: Mapped[datetime]
     updated_at: Mapped[datetime]
+
+class EventHost(Base):
+    __tablename__ = "event_hosts"
+    id: Mapped[uuid.UUID]
+    name: Mapped[str]  # organizer/host name
+    url: Mapped[str | None]  # host website
+    trust_level: Mapped[str]  # auto_approve, requires_review, blacklisted
+    blacklist_reason: Mapped[str | None]
+    approval_count: Mapped[int]  # how many events approved from this host
+    rejection_count: Mapped[int]  # how many rejected
+    created_at: Mapped[datetime]
+    updated_at: Mapped[datetime]
 ```
 
-## Community Submission Flow
+## Curation & Approval System
+
+### Trust Tiers
+
+**Auto-approve (high trust):**
+- Major AI conferences from known sources
+- Events from known companies and labs (Anthropic, OpenAI, Google, NVIDIA, etc.)
+- Events from known developer communities (MLOps Community, Latent Space, Papers We Love, etc.)
+- University lab public events
+- Events from hosts previously approved by admin (with guardrails — see below)
+
+**Admin-approve (everything else):**
+- Community submissions
+- Grok-discovered local events
+- Anything from an unknown host/organizer
+- Events from Lu.ma or other sources
+
+**No allow-list needed for company/lab events.** Instead, analyze: Is this a real tech company/startup (not a consultancy)? Does this event pass the grifter rubric (score pass/fail)? This is a Sonnet judgment call, not a lookup.
+
+### Admin Approval Queue
+
+1. Admin sees pending events with source info and any auto-analysis
+2. **Approve** — event goes live. Optional: add notes explaining why (builds dataset for future automation)
+3. **Reject** — event stays hidden. Optional: add notes explaining why
+4. **Blacklist host** — admin can blacklist the host/organizer on reject. Future events from this host are auto-rejected.
+5. All approval/rejection decisions with notes are stored for training future curation automation
+
+### Host Trust (learned over time)
+
+When an event is approved, the host/organizer earns trust. Future events from the same host can be auto-approved **with guardrails:**
+- Host name/org must match
+- Event must still pass the basic grifter rubric (prevents a legitimate host from later hosting a grifter event or pivoting to lead gen)
+- If a previously trusted host submits something that fails the rubric, it goes to admin queue instead of auto-approving
+
+**Concern addressed:** A "generic" host gets approved for one good event, then hosts something shitty later. The rubric check on every event (even from trusted hosts) prevents this. Trust speeds up approval but doesn't bypass quality checks.
+
+### Community Submission Flow
 
 1. User clicks "Submit Event" on /events page
 2. Must be logged in (Discourse SSO — same as news app)
 3. Simple form: name, dates, location, URL, type, cost, description, eligibility
 4. Submits → stored with `status=pending_approval`
-5. Admin sees queue in admin panel, approves/rejects/edits
-6. Approved events go live immediately
-7. Haiku auto-fills missing fields (geocoding, tags) on approval
+5. Admin sees queue with submission details + submitter info
+6. Admin approves/rejects/edits with optional notes
+7. Approved events go live; Haiku auto-fills missing fields (geocoding, tags)
 
 ## Distance Search
 
