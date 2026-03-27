@@ -122,6 +122,18 @@ Events change dates, get canceled, change venues. Stale data is worse than missi
 - Flag "updated" events so users see changes
 - Detect cancellations
 
+**Recurring Events:**
+Many of the best community events are recurring (SF AI Engineers monthly, Flushing Tech bi-weekly, AI Tinkerers build nights, etc.). These need special handling:
+- Store the **series** as a parent entity with recurrence pattern, not just individual instances
+- Auto-generate upcoming instances based on recurrence rule
+- **Freshness checks are critical** — recurring events pause, stop, change dates/venues, or skip months without notice. Check before each occurrence:
+  - Is this series still active? (scrape organizer page / Meetup / Luma)
+  - Has the next date/time/venue changed?
+  - Any announcements about hiatus or cancellation?
+- Display recurring events distinctly in the calendar (e.g., "Monthly" badge, series view)
+- Users should be able to "follow" a recurring series and get notified of upcoming instances
+- If a recurring event hasn't had a confirmed next date in 60+ days, mark series as `paused` and stop generating instances until re-confirmed
+
 **Dedup:** Match by URL + name + date range. Events may appear in multiple sources.
 
 **Geocoding:** Convert addresses/city names to lat/lng for distance search. Nominatim (free, OSM-based) for MVP. Google Maps Geocoding API as upgrade if needed.
@@ -186,6 +198,12 @@ class CalendarEvent(Base):
     is_virtual: Mapped[bool]
     tags: Mapped[list[str]]  # reuse existing tag taxonomy
     source: Mapped[str]  # where we found it
+    # Recurring event support
+    is_recurring: Mapped[bool]  # true for recurring series (monthly meetups, bi-weekly hacks, etc.)
+    recurrence_rule: Mapped[str | None]  # human-readable: "First Wednesday monthly", "Bi-weekly Fridays"
+    series_id: Mapped[uuid.UUID | None]  # links all instances of a recurring event
+    next_occurrence: Mapped[date | None]  # next scheduled date (for recurring; auto-updated)
+    recurrence_status: Mapped[str | None]  # active, paused, ended (tracked via freshness checks)
     host_name: Mapped[str | None]  # organizer/host name (for trust tracking)
     host_id: Mapped[uuid.UUID | None]  # FK to event_hosts table
     submitted_by: Mapped[int | None]  # discourse user id, if community-submitted
