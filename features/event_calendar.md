@@ -88,10 +88,13 @@ Meetup and Eventbrite are littered with garbage: grifter webinars ("passive inco
 **Decision: No automated local event discovery from aggregator platforms.** No Meetup API. No Eventbrite. Local events flow through human-curated channels only.
 
 **Discovery sources (priority order):**
-1. **Community submissions (primary)** — the flywheel. Discourse SSO + simple form + admin approval queue. Submitters are our community (builders), so they self-select quality. Becomes the primary growth driver over time.
-2. **Grok X search (xAI API)** — per-metro sweeps to find events from real companies, startups, and builder communities. Must include anti-grifter instructions in prompt. All Grok-discovered local events go through admin approval, never auto-approved.
-3. **Lu.ma** — higher quality than Meetup/Eventbrite at a glance. Monitor `luma.com/ai` category manually. No discovery API (organizer-only). Consider following community calendars on X (Grok catches announcements). Revisit if they open a discovery API.
-4. **University AI lab talks** — add sources as we discover them through research. University AI bulletin boards, lab event pages. Include only events open to the public (not student/faculty-only).
+1. **Curated Luma calendars (primary for lab/company events)** — Luma is the dominant platform for AI community events. Track specific org calendars directly (iCal-subscribable, structured data). This sidesteps the grifter problem entirely — we track calendars we trust, not the whole platform. Known calendars: Anthropic (claudecommunity), DeepMind, W&B, OpenAI NYC, Bond AI SF/NYC, AI Tinkerers chapters. Periodically scan Luma for new quality calendars to add.
+2. **Community submissions** — the flywheel. Discourse SSO + simple form + admin approval queue. Submitters are our community (builders), so they self-select quality. Becomes the primary growth driver over time.
+3. **Grok X search (xAI API)** — per-metro sweeps to find events from real companies, startups, and builder communities. Must include anti-grifter instructions in prompt. All Grok-discovered local events go through admin approval, never auto-approved. Grok has proven effective at filtering for "genuine indie/hacker/startup organic" vibe when given cultural context in the prompt.
+4. **AI lab event pages** — Anthropic (/events), DeepMind (/discover/events/), W&B (/site/resources/events/), FAR.AI (/events), Meta AI (/events/), Cohere (/events). Scrape on a schedule. See `resources/event_calendar_seed/lab_event_sources.md` for full inventory.
+5. **Meta-aggregators** — GarysGuide (NYC indie tech), Cerebral Valley (hackathons), Bond AI Community (weekly SF/NYC/Seattle roundups), AI Safety Events Substack (weekly safety event roundups + AISafety.com/events-and-training directory).
+6. **University AI lab talks** — add sources as we discover them through research. University AI bulletin boards, lab event pages. Include only events open to the public (not student/faculty-only).
+7. **Anthropic Ambassador program events** — Anthropic funds community ambassadors to run local Claude meetups/hackathons with API credits. Community-organized but lab-backed. Auto-approve source.
 
 **Per-metro Grok search:**
 Start with 15 tech-weighted metros: SF/Bay Area, NYC, Seattle, Austin, LA, Boston, Chicago, Denver/Boulder, DC, Miami, Atlanta, Dallas/Fort Worth, London, Toronto, Berlin. Monthly sweeps per city.
