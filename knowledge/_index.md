@@ -36,7 +36,7 @@ USAGE: grep/search for your keyword → load specific referenced file(s)
 - [gotcha_nextjs_hydration_mismatch.md]
 - [gotcha_prisma_json_typing.md]
 
-## AI Signal Pipeline
+## Goblin News Pipeline
 **Clustering**: [gotcha_unionfind_transitive_closure.md] — Union-find + embedding similarity causes mega-clusters via transitive closure. Fixed with HyDE (Haiku normalization before embedding).
 
 ## Recent Additions

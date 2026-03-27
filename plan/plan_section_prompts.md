@@ -10,7 +10,7 @@ last_updated: 2026-03-10
 
 ## Overview
 
-LLM prompt templates for every stage of the AI Signal pipeline. All prompts live in `agent/runbooks.py` as system prompts (runbooks) for the Claude Agent SDK agents and subagents. The pipeline uses Haiku for high-volume extraction and classification, Sonnet for synthesis and scoring, and Grok for sentiment analysis via X search.
+LLM prompt templates for every stage of the Goblin News pipeline. All prompts live in `agent/runbooks.py` as system prompts (runbooks) for the Claude Agent SDK agents and subagents. The pipeline uses Haiku for high-volume extraction and classification, Sonnet for synthesis and scoring, and Grok for sentiment analysis via X search.
 
 ## Decision History
 

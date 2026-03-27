@@ -23,7 +23,7 @@
 - **Opinion-vs-fact guardrails**: Distiller, editor, QC prompts now require attribution for opinion/analysis articles
 - **Bug fixes**: Day headers on week/month (flat list now), mobile search zoom (16px input), duplicate day headers (Map merge), sidebar stale searchParams
 - **Security (round 3)**: Admin from Discourse admin flag (dynamic, not hardcoded), HTML sanitization on admin inputs, UUID validation, slug validation, `is_admin` on User model synced from SSO
-- **Admin auth**: Dynamic from Discourse — whoever is admin on the forum is admin on AI Signal. No hardcoded IDs.
+- **Admin auth**: Dynamic from Discourse — whoever is admin on the forum is admin on Goblin News. No hardcoded IDs.
 
 ### 2026-03-12 — 2026-03-23
 

@@ -10,7 +10,7 @@ last_updated: 2026-03-09
 
 ## Overview
 
-Event Intelligence is the core product — the thing that makes AI Signal hard to replicate. An **event** is the canonical unit of content, not a news story. When 15 newsletters and 5 blog posts all cover the same announcement, they become one event record with all signal distilled and zero noise. This section defines how raw articles become events: ingestion → HyDE normalization → clustering → event intelligence → dedup.
+Event Intelligence is the core product — the thing that makes Goblin News hard to replicate. An **event** is the canonical unit of content, not a news story. When 15 newsletters and 5 blog posts all cover the same announcement, they become one event record with all signal distilled and zero noise. This section defines how raw articles become events: ingestion → HyDE normalization → clustering → event intelligence → dedup.
 
 ## Decision History
 

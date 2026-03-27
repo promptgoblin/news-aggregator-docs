@@ -1,35 +1,33 @@
-# AI Signal — Feature Roadmap
+# Goblin News — Feature Roadmap
 
 **Last Updated**: 2026-03-09
 
 ## Priority Order
 
-### Tier 1 — Ship the Product
-These must be done before or during production deployment. They make AI Signal a real product.
+### Tier 1 — Ship the Product (Complete)
 
 | # | Feature | Complexity | Doc | Status |
 |---|---------|-----------|-----|--------|
-| 1 | **Production Deployment** | C3 | [production_deployment.md](production_deployment.md) | Planning |
-| 2 | **Grok Sentiment (two-pass)** | C2 | [sentiment_reactions.md](sentiment_reactions.md) | Planning |
-| 3 | **UI Overhaul (modal, WTM, view toggle)** | C2 | See plan: lovely-bubbling-blossom.md | In Progress |
+| 1 | **Production Deployment** | C3 | [production_deployment.md](production_deployment.md) | Shipped |
+| 2 | **Grok Sentiment (two-pass)** | C2 | [sentiment_reactions.md](sentiment_reactions.md) | Shipped |
+| 3 | **UI Overhaul (modal, WTM, view toggle)** | C2 | — | Shipped |
 | 4 | **Ops Notifications (forum bot)** | C1 | [ops_notifications.md](ops_notifications.md) | Planning |
 
-### Tier 2 — Community Integration
-These connect AI Signal to the Prompt Goblins forum and make it a social product.
+### Tier 2 — Community Integration (Complete)
 
 | # | Feature | Complexity | Doc | Status |
 |---|---------|-----------|-----|--------|
-| 5 | **Forum Auth (Discourse SSO)** | C2 | [forum_auth.md](forum_auth.md) | Planning |
-| 6 | **Discuss Button** | C2 | [discourse_integration.md](discourse_integration.md) | Planning |
-| 7 | **RSS Feeds** | C1 | [rss_feeds.md](rss_feeds.md) | Planning |
+| 5 | **Forum Auth (Discourse SSO)** | C2 | [forum_auth.md](forum_auth.md) | Shipped |
+| 6 | **Discuss Button** | C2 | [discourse_integration.md](discourse_integration.md) | Shipped |
+| 7 | **RSS Feeds** | C1 | [rss_feeds.md](rss_feeds.md) | Shipped |
+| — | **Community Voting** | C2 | [community_voting.md](community_voting.md) | Shipped |
 
 ### Tier 3 — Growth Features
-These expand scope and attract new audiences.
 
 | # | Feature | Complexity | Doc | Status |
 |---|---------|-----------|-----|--------|
 | 8 | **AI Event Calendar** | C3 | [event_calendar.md](event_calendar.md) | Planning |
-| 9 | **Curated Blogs & Research** | C2 | [curated_content.md](curated_content.md) | Planning |
+| 9 | ~~Curated Blogs & Research~~ | C2 | [curated_content.md](curated_content.md) | **Deferred** — see decision record |
 
 ---
 
@@ -45,7 +43,7 @@ These expand scope and attract new audiences.
 6. **Discuss button** — depends on auth, creates the forum ↔ news flywheel
 7. **RSS feeds** — small effort, big value for power users
 8. **Event calendar** — new data model + UI + discovery pipeline = essentially a second product. High value but ship news first.
-9. **Curated content** — ongoing effort, ramp gradually. Phase A (seed blogs) can start anytime.
+9. ~~Curated content~~ — **Deferred**. News pipeline already picks up noteworthy research/blogs. Dedicated pipelines are costly, hard to tune for signal quality, and the forum is a better venue for community-curated content. See [curated_content.md](curated_content.md) for full decision record.
 
 ---
 

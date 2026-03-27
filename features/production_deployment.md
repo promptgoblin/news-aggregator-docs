@@ -12,7 +12,7 @@ required_by: [discourse_integration, forum_auth, ops_notifications]
 ## User Intent
 
 ### Goal
-Deploy AI Signal to news.promptgoblins.ai on the Hetzner server, with the agent pipeline isolated in its own container to limit blast radius from prompt injection or pipeline failures.
+Deploy Goblin News to news.promptgoblins.ai on the Hetzner server, with the agent pipeline isolated in its own container to limit blast radius from prompt injection or pipeline failures.
 
 ### Success Criteria
 - news.promptgoblins.ai serves the frontend (Next.js)

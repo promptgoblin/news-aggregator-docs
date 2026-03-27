@@ -19,7 +19,7 @@ Let users start or join discussions about news events on the Prompt Goblins foru
 - If no thread exists, one is created automatically with a bot summary
 - Race conditions handled: two users clicking "Discuss" at the same time don't create duplicate threads
 - Users who aren't logged in get routed through signup/login first, then redirected back
-- Bot posts are attributed to a dedicated "AI Signal" user on the forum
+- Bot posts are attributed to a dedicated "Goblin News" user on the forum
 
 ### User Flow — Thread Exists
 1. User clicks "Discuss" on event
@@ -38,7 +38,7 @@ Let users start or join discussions about news events on the Prompt Goblins foru
 2. No thread exists, user not authenticated
 3. Redirect to Discourse login/signup with return URL
 4. User logs in or signs up
-5. Redirect back to AI Signal with intent to discuss
+5. Redirect back to Goblin News with intent to discuss
 6. **Re-check**: does thread exist now? (someone else may have created it)
 7. If yes → redirect to existing thread
 8. If no → create thread (same as logged-in flow)
@@ -62,7 +62,7 @@ The "Discuss" button hits an API endpoint on ai-signal-api. The endpoint handles
 - **`discourse_topic_id`** column on `events` table (nullable int, indexed)
 - **`POST /api/events/{id}/discuss`** endpoint — orchestrates the flow
 - **Discourse API client** — creates topics in the AI News category
-- **Bot user** on Discourse — "AI Signal" or "NewsBot" with its own API key
+- **Bot user** on Discourse — "Goblin News" or "NewsBot" with its own API key
 - **Frontend Discuss button** — on EventRow, EventModal, and event detail page
 
 ### Race Condition Handling
@@ -94,7 +94,7 @@ async with db.begin():
 {formatted tier3 key points, 3-5 bullets}
 
 ---
-*This discussion was started from [AI Signal](https://news.promptgoblins.ai/event/{slug}).
+*This discussion was started from [Goblin News](https://news.promptgoblins.ai/event/{slug}).
 What do you think about this story?*
 ```
 
@@ -136,7 +136,7 @@ discourse_topic_id: Mapped[int | None] = mapped_column(Integer, nullable=True, i
 - [ ] Post-login redirect correctly checks for existing thread before creating
 
 ## Outstanding
-- [ ] Create "AI Signal" bot user on Discourse
+- [ ] Create "Goblin News" bot user on Discourse
 - [ ] Generate API key for bot user
 - [ ] Decide: which Discourse category? (category 8 = AI News, or new subcategory?)
 - [ ] Decide: should high-score events auto-create threads (without user click)?

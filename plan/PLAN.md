@@ -1,4 +1,4 @@
-# Plan: AI Signal
+# Plan: Goblin News
 
 > Event intelligence platform for AI news — one source, zero noise.
 

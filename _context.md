@@ -4,7 +4,7 @@
 
 ## Project Overview
 
-**AI Signal** — Event intelligence platform for AI news. Subdomain of Prompt Goblins (news.promptgoblins.ai). Aggregates from newsletters, RSS, HN. Distills into canonical events with three-tier content depth. Core product is the quality of event distillation, not just features.
+**Goblin News** — Event intelligence platform for AI news. Subdomain of Prompt Goblins (news.promptgoblins.ai). Aggregates from newsletters, RSS, HN. Distills into canonical events with three-tier content depth. Core product is the quality of event distillation, not just features.
 
 **Key Insight**: The unit of content is an **event**, not a news story. Multiple articles, tweets, and takes about the same thing get clustered and distilled into one comprehensive, efficiently consumable unit.
 

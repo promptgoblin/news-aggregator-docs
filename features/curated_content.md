@@ -12,7 +12,7 @@ required_by: []
 ## User Intent
 
 ### Goal
-Go beyond passively consuming RSS feeds and newsletters. Actively curate blogs and research papers — finding content that's worth covering even if it doesn't appear in our existing sources. This differentiates AI Signal from just being a newsletter aggregator.
+Go beyond passively consuming RSS feeds and newsletters. Actively curate blogs and research papers — finding content that's worth covering even if it doesn't appear in our existing sources. This differentiates Goblin News from just being a newsletter aggregator.
 
 ### Success Criteria
 - Discover notable blog posts from individual AI practitioners and researchers
@@ -27,9 +27,29 @@ Go beyond passively consuming RSS feeds and newsletters. Actively curate blogs a
 3. User sees it in their feed like any other story
 4. Category/tags distinguish it (e.g., "research", "deep-dive", "tutorial")
 
-## Status: Planning
+## Status: Deferred (2026-03-27)
 **Started**: 2026-03-09
-**Last Updated**: 2026-03-09
+**Last Updated**: 2026-03-27
+
+### Decision: Defer Dedicated Research & Blog Pipelines
+
+**Decision**: Do not build dedicated research paper or blog curation pipelines. Remove Research and Blogs tabs from the frontend. Keep the news pipeline as the single pipeline, which already picks up noteworthy research and blog content organically when it gets newsletter/media coverage.
+
+**Reasoning**:
+
+1. **Cost** — arXiv publishes 100+ AI papers/day. Even reading abstracts with Haiku adds up, and processing full papers for distillation burns serious tokens on content that may score low. Blog discovery has similar volume-to-signal problems.
+
+2. **Source diversity for blogs** — Without massive source breadth, a blog feed would oversample the same handful of sources (model lab blogs, etc.) and look like promotion rather than curation. The news pipeline already covers these when the posts are newsworthy.
+
+3. **Signal quality** — The news pipeline works because sources pre-curate: newsletter editors already filtered, journalists already decided something was worth covering. arXiv and random blogs have no such filter. Building editorial judgment from scratch in prompts is expensive to tune and easy to get wrong. LLMs tend to rate things as "interesting" based on how the content presents itself (hype in a blog post, novelty in a paper abstract) rather than actual importance.
+
+4. **Forum is the better venue** — Research papers and tutorials are exactly the kind of content that users surface organically in community discussion — in response to questions, because something is genuinely useful, or because a practitioner found it valuable. This is more meaningful curation than any automated pipeline.
+
+5. **Current pipeline already works** — Noteworthy research that gets newsletter/media coverage already appears in the news feed. A paper that doesn't get coverage probably isn't news. The existing research category filter still works for users who want to see what research the news pipeline picks up.
+
+**What we kept**: Research and blog content that enters via the existing news pipeline (newsletters, RSS) continues to be processed normally. The category taxonomy still includes "research" for filtering. If research or blog content scores poorly or clutters the feed, we tune the existing pipeline rather than building new ones.
+
+**Revisit when**: Revenue supports high token spend AND we have data showing users want dedicated research/blog feeds that the news pipeline can't satisfy.
 
 ## References
 - Plan: [plan/plan_section_discovery.md] (P2-P3 sources)

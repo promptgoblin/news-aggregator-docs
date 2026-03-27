@@ -12,7 +12,7 @@ required_by: []
 ## User Intent
 
 ### Goal
-Offer RSS feeds from AI Signal that users can subscribe to in their RSS reader. Feeds are filterable by category, tags, score threshold, and other parameters — so users get exactly the slice of AI news they want.
+Offer RSS feeds from Goblin News that users can subscribe to in their RSS reader. Feeds are filterable by category, tags, score threshold, and other parameters — so users get exactly the slice of AI news they want.
 
 ### Success Criteria
 - `/feed.xml` returns a valid RSS 2.0 / Atom feed of all events

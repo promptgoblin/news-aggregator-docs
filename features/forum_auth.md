@@ -12,7 +12,7 @@ required_by: [discourse_integration]
 ## User Intent
 
 ### Goal
-Let users log in to AI Signal using their Prompt Goblins forum account. Once logged in, they can save display preferences (view mode, default filters, theme), mark stories as read, and start forum discussions.
+Let users log in to Goblin News using their Prompt Goblins forum account. Once logged in, they can save display preferences (view mode, default filters, theme), mark stories as read, and start forum discussions.
 
 ### Success Criteria
 - Users log in via Discourse OAuth2 — single account for forum + news
@@ -36,8 +36,8 @@ Everything else (browsing, filtering, reading, searching) works without any acco
 2. Prompt explains what signing in enables
 3. Redirect to Discourse OAuth2 authorize endpoint
 4. User is already logged in → auto-grants (or one-click approve first time)
-5. Redirect back to AI Signal with auth code (~2 seconds, feels instant)
-6. AI Signal exchanges code for token, fetches user info
+5. Redirect back to Goblin News with auth code (~2 seconds, feels instant)
+6. Goblin News exchanges code for token, fetches user info
 7. Creates/updates local user record, sets JWT session cookie
 8. Completes the original action (create topic, save prefs, etc.)
 
@@ -45,7 +45,7 @@ Everything else (browsing, filtering, reading, searching) works without any acco
 1. User clicks action requiring auth
 2. Redirect to Discourse OAuth2 → Discourse login page
 3. User logs in (or signs up if new)
-4. Approves AI Signal access (first time only)
+4. Approves Goblin News access (first time only)
 5. Redirect back → logged in, original action completes
 
 ## Status: Planning
@@ -61,7 +61,7 @@ Everything else (browsing, filtering, reading, searching) works without any acco
 ## Implementation
 
 ### Approach
-Use Discourse as a standard OAuth2 provider. Enable the `discourse_as_oauth2_provider` setting on the forum, register AI Signal as an OAuth2 application to get a client_id and client_secret. Standard Authorization Code flow — redirect to forum, user authenticates, redirect back with code, exchange for access token, fetch user info from Discourse API. Store a minimal local user record and a JWT session cookie.
+Use Discourse as a standard OAuth2 provider. Enable the `discourse_as_oauth2_provider` setting on the forum, register Goblin News as an OAuth2 application to get a client_id and client_secret. Standard Authorization Code flow — redirect to forum, user authenticates, redirect back with code, exchange for access token, fetch user info from Discourse API. Store a minimal local user record and a JWT session cookie.
 
 **Why OAuth2 over DiscourseConnect:**
 - Standard protocol with broad library support
@@ -72,7 +72,7 @@ Use Discourse as a standard OAuth2 provider. Enable the `discourse_as_oauth2_pro
 
 ### Key Components
 - **OAuth2 flow**: Standard Authorization Code grant
-- **Discourse settings**: `discourse_as_oauth2_provider` enabled, AI Signal registered as OAuth2 app
+- **Discourse settings**: `discourse_as_oauth2_provider` enabled, Goblin News registered as OAuth2 app
 - **`/api/auth/discourse`**: Initiates OAuth2 flow (stores return URL + intended action)
 - **`/api/auth/discourse/callback`**: Handles redirect, exchanges code, creates session
 - **`users` table**: Local user record (discourse_user_id, username, avatar_url, preferences)
@@ -182,7 +182,7 @@ JWT_SECRET=...  # separate from Discourse, for signing our session cookies
 
 ## Outstanding
 - [ ] Enable `discourse_as_oauth2_provider` in Discourse admin
-- [ ] Register AI Signal as OAuth2 application, get client_id/secret
+- [ ] Register Goblin News as OAuth2 application, get client_id/secret
 - [ ] Decide: auto-mark-read default (on click vs manual only)
 - [ ] Decide: show read count/badge in nav or just in feed?
 - [ ] Decide: "Sign in with Prompt Goblins" button copy/placement

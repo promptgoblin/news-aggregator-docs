@@ -1,4 +1,4 @@
-# AI Signal: News Aggregator & Curation Platform — Original Spec
+# Goblin News: News Aggregator & Curation Platform — Original Spec
 
 > **Type**: Reference / Product Spec
 > **Author**: Mike

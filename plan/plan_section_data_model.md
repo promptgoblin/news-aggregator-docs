@@ -10,7 +10,7 @@ last_updated: 2026-03-10
 
 ## Overview
 
-Data model for AI Signal built on PostgreSQL + pgvector. The core entities are **Event** (canonical unit of content), **Article** (individual source document), **Source** (a newsletter, blog, or feed), and **Channel** (ingestion mechanism). The schema supports vector similarity search, event clustering, three-tier content, and source quality tracking.
+Data model for Goblin News built on PostgreSQL + pgvector. The core entities are **Event** (canonical unit of content), **Article** (individual source document), **Source** (a newsletter, blog, or feed), and **Channel** (ingestion mechanism). The schema supports vector similarity search, event clustering, three-tier content, and source quality tracking.
 
 ## Decision History
 

@@ -10,7 +10,7 @@ last_updated: 2026-03-10
 
 ## Overview
 
-System architecture for AI Signal. Python/FastAPI backend with Claude Agent SDK for async pipeline processing, PostgreSQL+pgvector for storage, Next.js frontend. Hosted at news.promptgoblins.ai on the same web server as the Prompt Goblins forum — co-located for simplicity and shared resources. Agent pipeline runs on this server, not on a dev machine.
+System architecture for Goblin News. Python/FastAPI backend with Claude Agent SDK for async pipeline processing, PostgreSQL+pgvector for storage, Next.js frontend. Hosted at news.promptgoblins.ai on the same web server as the Prompt Goblins forum — co-located for simplicity and shared resources. Agent pipeline runs on this server, not on a dev machine.
 
 ## Decision History
 
@@ -200,7 +200,7 @@ All LLM processing uses Claude Agent SDK authenticated via Mike's Claude Code su
 - Discourse API key (forum integration)
 
 ### Constraints
-- Shared server — AI Signal must not starve forum resources
+- Shared server — Goblin News must not starve forum resources
 - Agent pipeline must be reliable (not dependent on dev machine uptime)
 - Frontend must match Prompt Goblins theme (light/dark modes)
 

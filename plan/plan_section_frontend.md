@@ -42,7 +42,7 @@ news.promptgoblins.ai
 
 ```
 ┌─────────────────────────────────────────────────┐
-│  [Logo] AI Signal        [Search] [Theme Toggle] │
+│  [Logo] Goblin News      [Search] [Theme Toggle] │
 ├─────────────────────────────────────────────────┤
 │  Filters: [Score ▼] [Tags ▼] [Time ▼] [Presets] │
 ├─────────────────────────────────────────────────┤

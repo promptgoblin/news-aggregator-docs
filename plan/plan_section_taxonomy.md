@@ -10,7 +10,7 @@ last_updated: 2025-02-25
 
 ## Overview
 
-Tag taxonomy and scoring system for AI Signal events. Tags enable filtering and discovery. Importance scores drive feed ordering and quality thresholds. The taxonomy is LLM-assigned from a fixed list — the auto-tagger cannot create new tags (same principle as the Prompt Goblins forum).
+Tag taxonomy and scoring system for Goblin News events. Tags enable filtering and discovery. Importance scores drive feed ordering and quality thresholds. The taxonomy is LLM-assigned from a fixed list — the auto-tagger cannot create new tags (same principle as the Prompt Goblins forum).
 
 ## Key Decisions
 

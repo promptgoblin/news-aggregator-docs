@@ -12,14 +12,14 @@ required_by: []
 ## User Intent
 
 ### Goal
-Use the AI Signal bot user on Discourse to notify Mike about operational issues — OAuth token expiry, pipeline failures, cost warnings, rate limits. No separate monitoring stack needed; notifications arrive as forum DMs.
+Use the Goblin News bot user on Discourse to notify Mike about operational issues — OAuth token expiry, pipeline failures, cost warnings, rate limits. No separate monitoring stack needed; notifications arrive as forum DMs.
 
 ### Success Criteria
 - Mike gets a forum DM when the pipeline fails
 - Progressive OAuth token expiry reminders (60/30/15/7/daily)
 - Cost warnings when approaching budget limit
 - Rate limit alerts with pattern summary
-- All notifications via the same "AI Signal" bot user used for Discuss threads
+- All notifications via the same "Goblin News" bot user used for Discuss threads
 
 ### User Flow
 1. Pipeline runs, encounters issue (or cron checks token expiry)
@@ -56,7 +56,7 @@ A lightweight notification module that sends DMs via the Discourse API. Called f
 ### Discourse API Call
 ```python
 async def notify_forum(subject: str, body: str, target_user_id: int = 1):
-    """Send a DM to Mike via the AI Signal bot on Discourse."""
+    """Send a DM to Mike via the Goblin News bot on Discourse."""
     async with httpx.AsyncClient() as client:
         await client.post(
             "https://promptgoblins.ai/posts.json",
@@ -103,6 +103,6 @@ async def notify_forum(subject: str, body: str, target_user_id: int = 1):
 - [ ] Notifications are deduped (no spam)
 
 ## Outstanding
-- [ ] Create "AI Signal" bot user on Discourse (shared with discuss feature)
+- [ ] Create "Goblin News" bot user on Discourse (shared with discuss feature)
 - [ ] Generate scoped API key for bot
 - [ ] Decide: should notifications also go to a public "ops" topic for transparency?
