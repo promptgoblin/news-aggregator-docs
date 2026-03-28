@@ -195,8 +195,11 @@ class CalendarEvent(Base):
     url: Mapped[str]
     cost: Mapped[str | None]  # "Free", "$499", "$99-$299"
     eligibility: Mapped[str | None]  # "Open to public", "Requires registration", etc.
-    is_virtual: Mapped[bool]
+    format: Mapped[str]  # in_person, online, hybrid
+    is_dates_tbd: Mapped[bool]  # true for annual events with unannounced dates
+    tbd_usual_month: Mapped[str | None]  # "March", "November-December" — for TBD annual events
     tags: Mapped[list[str]]  # reuse existing tag taxonomy
+    normalized_description: Mapped[str | None]  # our rewritten, consistently formatted description
     source: Mapped[str]  # where we found it
     # Recurring event support
     is_recurring: Mapped[bool]  # true for recurring series (monthly meetups, bi-weekly hacks, etc.)
