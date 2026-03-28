@@ -95,6 +95,12 @@ Meetup and Eventbrite are littered with garbage: grifter webinars ("passive inco
 5. **Meta-aggregators** — GarysGuide (NYC indie tech), Cerebral Valley (hackathons), Bond AI Community (weekly SF/NYC/Seattle roundups), AI Safety Events Substack (weekly safety event roundups + AISafety.com/events-and-training directory).
 6. **University AI lab talks** — add sources as we discover them through research. University AI bulletin boards, lab event pages. Include only events open to the public (not student/faculty-only).
 7. **Anthropic Ambassador program events** — Anthropic funds community ambassadors to run local Claude meetups/hackathons with API credits. Community-organized but lab-backed. Auto-approve source.
+8. **Conference circuit organizers** — Some orgs run global event circuits from a single source page. Scrape periodically for new events across cities:
+   - AI Engineer (ai.engineer) — World's Fair, Europe, NYC, Code Summit + regional AIEi partner events
+   - AI Tinkerers (aitinkerers.org/ai-meetups) — 205 city chapters, monthly meetups
+   - AI Furnace — NYC, London, Boston, Paris, Dubai
+   - MLOps Community — 10+ city chapters
+   - AI Salon — 37 cities
 
 **Per-metro Grok search:**
 Start with 15 tech-weighted metros: SF/Bay Area, NYC, Seattle, Austin, LA, Boston, Chicago, Denver/Boulder, DC, Miami, Atlanta, Dallas/Fort Worth, London, Toronto, Berlin. Monthly sweeps per city.
