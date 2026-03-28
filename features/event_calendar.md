@@ -134,7 +134,7 @@ Many of the best community events are recurring (SF AI Engineers monthly, Flushi
 - Users should be able to "follow" a recurring series and get notified of upcoming instances
 - If a recurring event hasn't had a confirmed next date in 60+ days, mark series as `paused` and stop generating instances until re-confirmed
 
-**Dedup:** Match by URL + name + date range. Events may appear in multiple sources.
+**Dedup:** Events will appear in multiple sources (Luma calendar + Grok X search + community submission for the same event). Match by URL + name + date range + location. Fuzzy match on name since the same event may be listed slightly differently across sources ("AI Tinkerers SF: April" vs "SF AI Tinkerers April Meetup"). Haiku can resolve ambiguous matches. Dedup runs on every pipeline ingestion, not just at seed time.
 
 **Geocoding:** Convert addresses/city names to lat/lng for distance search. Nominatim (free, OSM-based) for MVP. Google Maps Geocoding API as upgrade if needed.
 
