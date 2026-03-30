@@ -320,6 +320,251 @@ ORDER BY start_date
 - No Eventbrite API for discovery (killed 2020)
 - Meetup API requires $30/mo paid subscription
 
+## Production Pipeline Architecture
+
+The event calendar pipeline runs as a separate orchestrator in the existing agent container, alongside the news pipeline. Uses Agent SDK (same auth pattern as news).
+
+### Pipeline Overview
+
+```
+CRON SCHEDULE:
+  Daily (6am UTC):     Luma calendar sync + conference circuit scrape
+  Weekly (Monday 8am): Freshness re-confirmation for upcoming events
+  Monthly (1st, 8am):  Grok X search sweeps per metro + new source discovery
+
+SUBMISSION FLOW (on-demand):
+  User submits → pending_approval → admin approves → auto-enrich if has_event_page
+
+PIPELINE STAGES:
+  1. INGEST     — pull events from sources (Luma, circuits, lab pages)
+  2. DEDUP      — match against existing events (URL + name + date fuzzy match)
+  3. CLASSIFY   — determine event_type, is_hackathon, format, tags (Haiku)
+  4. ENRICH     — scrape event page for cost, description, speakers, etc. (trafilatura → scrape.do → Haiku)
+  5. GEOCODE    — Nominatim lat/lng from location
+  6. APPROVE    — auto-approve from trusted sources, queue others for admin
+  7. FRESHEN    — re-check existing events for date/venue/cost/status changes
+```
+
+### Stage 1: INGEST
+
+Three source types, each with its own ingestion method:
+
+**1a. Luma Calendar Sync (daily)**
+- Subscribe to curated Luma calendar iCal feeds (see `resources/event_calendar_seed/luma_calendar_directory.md` for full list)
+- Priority calendars (subscribe first): Anthropic/claudecommunity, DeepMind, W&B, OpenAI NYC, Cerebral Valley, LangChain, Bond AI SF/NYC, GenAI Collective, AI Furnace, AGI Builders, AI Builders Europe, AI Salon
+- For each calendar: fetch iCal feed → parse VEVENT entries → extract name, dates, location, URL, description
+- Luma iCal feeds are structured and reliable — minimal LLM needed at this stage
+- New calendars added periodically via admin or quarterly discovery sweep
+
+**1b. Conference Circuit Scrape (daily)**
+- Scrape directory/event pages from orgs that run multi-city event series:
+  - ai.engineer (World's Fair, Europe, NYC, Code Summit, AIEi partner events)
+  - aitinkerers.org/ai-meetups (205 city chapters)
+  - AI Furnace (NYC, London, Boston, Paris, Dubai)
+  - MLOps Community (10+ city chapters)
+  - AI Salon (37 cities)
+- For each: fetch page → extract event listings → parse into candidate events
+- Haiku extracts structured data from HTML when needed
+
+**1c. Lab Event Page Scrape (daily)**
+- Scrape event pages from AI labs/companies:
+  - anthropic.com/events
+  - deepmind.google/discover/events/
+  - wandb.ai/site/resources/events/
+  - far.ai/events
+  - ai.meta.com/events/
+  - cohere.com/events
+  - Mistral (X + dedicated microsites)
+- Extraction chain: direct fetch → trafilatura → readability → scrape.do (same as news pipeline)
+
+**1d. Grok X Search Sweeps (monthly)**
+- Per-metro search using xAI Responses API + x_search
+- 15 priority metros: SF, NYC, Seattle, Austin, LA, Boston, Chicago, Denver, DC, Miami, Atlanta, Dallas, London, Toronto, Berlin
+- Anti-grifter prompt with cultural context (proven effective in manual seeding)
+- All Grok-discovered events go to admin queue (never auto-approved)
+
+**1e. Submission Enrichment (on-demand)**
+- When admin approves a "has_event_page" submission: trigger enrichment pipeline on the URL
+- Same extraction chain as scraper script: fetch page → find pricing page → Haiku extracts structured details
+- Updates the CalendarEvent record with extracted data
+
+### Stage 2: DEDUP
+
+Before inserting any new event, check for duplicates:
+1. **Exact URL match** — same URL = same event (update, don't create)
+2. **Name + date fuzzy match** — Haiku compares candidate vs existing events within ±7 days: "Are these the same event?" YES/NO
+3. **On match**: update existing record with any new/better data (e.g., cost was TBD, now known)
+4. **On no match**: proceed to classify + enrich
+
+### Stage 3: CLASSIFY (Haiku)
+
+For each new event, Haiku determines:
+- `event_type`: ai_conference | ai_track | community_event | university_event
+- `is_hackathon`: true/false
+- `format`: in_person | online | hybrid
+- `tags`: from existing tag taxonomy
+- `eligibility`: who can attend
+
+**Classification rubric** (in prompt):
+- Primary purpose is AI → ai_conference
+- Broad tech conference with AI tracks → ai_track (user-facing label: "Tech Conference")
+- Informal, recurring, community-organized → community_event
+- Hackathon label cross-cuts all types
+
+### Stage 4: ENRICH
+
+Scrape the event's URL to fill in details:
+1. Fetch main page (trafilatura → readability → scrape.do chain)
+2. Haiku: find pricing/registration page URL from content
+3. If found, fetch pricing page too
+4. Haiku: extract structured details from combined content:
+   - cost (pricing tiers)
+   - description (2-3 sentences)
+   - normalized_description (our consistent format)
+   - eligibility
+   - estimated_attendance
+   - host info
+   - key speakers
+   - sold_out / waitlist status
+5. Only overwrite fields that have better data than what exists
+
+### Stage 5: GEOCODE
+
+For events with location but no lat/lng:
+- Build query from location_address + location_city + location_country
+- Call Nominatim (1 req/sec rate limit, User-Agent: GoblinNews/1.0)
+- Store lat/lng for distance search
+- Skip online events
+
+### Stage 6: APPROVE
+
+**Auto-approve sources** (no admin review needed):
+- AI Tinkerers (all chapters) — format enforces quality
+- Anthropic Ambassador events
+- Cerebral Valley
+- Events from known AI labs (Anthropic, DeepMind, OpenAI, etc.)
+- Events from known conferences (NeurIPS, ICML, GTC, etc.)
+- Any host with trust_level = "auto_approve" in EventHost table
+
+**Admin queue** (everything else):
+- Set status = "pending_approval"
+- Post notification to Discourse event-submissions category (30)
+- Admin reviews at /events/admin, approves/rejects with notes
+- Approved → status = "active", triggers enrichment if needed
+- Rejected → optionally blacklist host
+
+### Stage 7: FRESHEN
+
+Re-check existing events for changes:
+- **Schedule**: weekly for events within 60 days, monthly for events further out
+- **Within 7 days of event**: check daily
+- Scrape event URL → Haiku compares current content vs stored data
+- Detect: date changes, venue changes, cancellations, sold out status, price changes
+- Update CalendarEvent record + set last_confirmed timestamp
+- If recurring event hasn't posted next date in 60+ days → mark recurrence_status = "paused"
+- Log all changes for admin review
+
+### Pipeline Agent Structure (Agent SDK)
+
+```python
+# agent/event_orchestrator.py — main entry point for event pipeline
+
+# Runs inside the existing agent container
+# Separate from news orchestrator (agent/orchestrator.py)
+# Triggered by cron on its own schedule
+
+AGENTS:
+  event_orchestrator    [sonnet] — coordinates pipeline, makes judgment calls
+    ├── luma_ingestor   [haiku]  — parses iCal feeds, extracts events
+    ├── circuit_scraper [haiku]  — scrapes conference circuit pages
+    ├── lab_scraper     [haiku]  — scrapes lab event pages
+    ├── grok_discoverer [grok]   — X search for local events (monthly)
+    ├── dedup_checker   [haiku]  — fuzzy match against existing events
+    ├── classifier      [haiku]  — event type, tags, format
+    ├── enricher        [haiku]  — scrape + extract structured details
+    ├── geocoder        [none]   — Nominatim API calls, no LLM needed
+    └── freshener       [haiku]  — re-check existing events for changes
+
+MCP TOOLS (new, event-specific):
+  - get_calendar_events(filters) — query existing events for dedup
+  - upsert_calendar_event(data) — create or update event
+  - get_event_hosts(filters) — check host trust level
+  - update_event_host(id, trust_level) — update host trust
+  - mark_event_confirmed(id) — update last_confirmed timestamp
+  - fetch_and_extract(url) — trafilatura/scrape.do extraction chain
+  - geocode(location) — Nominatim lookup
+```
+
+### Cron Configuration
+
+```
+# Event pipeline cron (add to deploy/cron/pipeline-cron)
+# Daily: Luma + circuit + lab sync
+0 6 * * * cd /app && PYTHONPATH=/app/src python -m agent.event_orchestrator --daily
+# Weekly: freshness checks (Monday 8am UTC)
+0 8 * * 1 cd /app && PYTHONPATH=/app/src python -m agent.event_orchestrator --freshen
+# Monthly: Grok sweeps + source discovery (1st of month, 8am UTC)
+0 8 1 * * cd /app && PYTHONPATH=/app/src python -m agent.event_orchestrator --discover
+```
+
+### Cost Estimates
+
+| Stage | Model | Frequency | Est. Cost/Run |
+|-------|-------|-----------|---------------|
+| Luma ingest | Haiku | Daily | ~$0.01 (parsing, minimal LLM) |
+| Circuit scrape | Haiku | Daily | ~$0.05 (HTML extraction) |
+| Lab scrape | Haiku | Daily | ~$0.05 (HTML extraction) |
+| Dedup | Haiku | Per event | ~$0.001 per check |
+| Classify | Haiku | Per new event | ~$0.001 per event |
+| Enrich | Haiku | Per new event | ~$0.01 per event (2 pages + extraction) |
+| Freshen | Haiku | Weekly | ~$0.10 (re-check ~60 events) |
+| Grok discover | Grok | Monthly | ~$0.50 (15 metro searches) |
+| **Total daily** | | | **~$0.15** |
+| **Total monthly** | | | **~$5-8** |
+
+### Luma Calendar Feed URLs
+
+Priority calendars to subscribe first (from luma_calendar_directory.md):
+
+```
+# AI Labs & Companies
+https://lu.ma/claudecommunity        # Anthropic
+https://lu.ma/deepmind               # Google DeepMind
+https://lu.ma/wandb                  # Weights & Biases
+https://lu.ma/openainyc              # OpenAI NYC
+https://lu.ma/langchain              # LangChain
+https://lu.ma/cohere                 # Cohere (calendar URL in directory)
+
+# Top Communities
+https://lu.ma/cerebralvalley          # Cerebral Valley (SF)
+https://lu.ma/genai-sf               # Bond AI SF
+https://lu.ma/genai-ny               # Bond AI NYC
+https://lu.ma/genai-collective       # GenAI Collective (70K+)
+https://lu.ma/ai-furnace             # AI Furnace NYC
+https://lu.ma/ai-furnace-uk          # AI Furnace London
+https://lu.ma/ai-furnace-boston       # AI Furnace Boston
+https://lu.ma/agibuilders            # AGI Builders SF
+https://lu.ma/ai-builders            # AI Builders Europe
+https://lu.ma/aisalon                # AI Salon (37 cities)
+
+# Safety
+https://lu.ma/AISafetyBerlin         # AI Safety Berlin
+https://lu.ma/paperclip-club         # Paperclip Club
+https://lu.ma/AISecurityCollective   # AI Security Collective
+
+# City-specific (add more over time)
+https://lu.ma/artificialintelligencenyc  # AI NYC
+https://lu.ma/sf-mlops-community     # SF MLOps
+https://lu.ma/nyc.mlops              # NYC MLOps
+https://lu.ma/london-mlops           # London MLOps
+https://lu.ma/parisai                # Paris AI
+https://lu.ma/aimadlab               # Norway AI Mad Lab
+https://lu.ma/DeepStation            # Miami
+https://lu.ma/infer                  # Vancouver (Latent Space)
+```
+
+To get iCal feeds from Luma: append `.ics` to calendar URLs or check for iCal subscribe links on each calendar page. Research needed during build to confirm exact iCal endpoint format.
+
 ## Definition of Done
 
 ### Acceptance Criteria
@@ -334,12 +579,21 @@ ORDER BY start_date
 
 ## Outstanding
 
-- [x] Research: Meetup API access → paywalled ($30/mo), defer
+- [x] Research: Meetup API access → paywalled ($30/mo), skip (trash content)
 - [x] Research: Eventbrite API access → dead end, skip
-- [x] Research: Lu.ma API access → organizer-only, no discovery, monitor manually
-- [ ] Decide: PostGIS vs haversine SQL for distance (haversine for MVP)
-- [ ] Decide: geocoding provider (Nominatim for MVP)
-- [ ] Run initial Grok seeding (major conferences, AI track, per-metro)
-- [ ] Design admin approval queue UI
-- [ ] Design submission form
-- [ ] Seed list of major AI conferences for 2026-2027
+- [x] Research: Lu.ma API access → organizer-only, subscribe to curated calendars instead
+- [x] Research: AI lab event pages → 15 orgs inventoried (lab_event_sources.md)
+- [x] Research: Luma calendars → 80+ cataloged (luma_calendar_directory.md)
+- [x] Decide: PostGIS vs haversine SQL → haversine for MVP (deployed)
+- [x] Decide: geocoding provider → Nominatim (deployed)
+- [x] Run initial Grok seeding → 64 events seeded across all categories
+- [x] Design admin approval queue UI → /events/admin (deployed)
+- [x] Design submission form → /events/submit two-path (deployed)
+- [x] Seed list of major AI conferences for 2026-2027
+- [x] Verify seed events → sub-agents verified all events, corrections applied
+- [x] Build event scraper script (scrape_event_details.py)
+- [ ] **BUILD: Production pipeline** (Agent SDK, see architecture above)
+- [ ] Confirm Luma iCal feed format (research during build)
+- [ ] Add --all mode to scraper for comprehensive freshness checks
+- [ ] Hybrid search (keyword + semantic) — separate feature doc
+- [ ] Cost normalization (structured schema)
