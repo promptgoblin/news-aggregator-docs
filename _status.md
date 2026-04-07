@@ -1,15 +1,15 @@
 # Project Status
 
-**Last Updated**: 2026-03-25
+**Last Updated**: 2026-04-07
 
 ## Active Phase
 **Phase**: Phase 2 — Foundation
-**Phase Status**: In Progress — Pipeline running, community voting live, preparing for event calendar feature
+**Phase Status**: In Progress — News pipeline running, community voting live. Event calendar built and killed.
 
 ## Current Session
 
-**Working On**: Event calendar feature (next)
-**Status**: All Phase 2 features shipped. Community voting, admin tools, security hardened. Ready for new features.
+**Working On**: News pipeline only. Event calendar feature was killed 2026-04-07 (Sonnet quota burn vs news priority + low demand). See [features/event_calendar.md](features/event_calendar.md) — status: archived. Code, tables, and frontend removed; archive doc preserves prompts/patterns/lessons for revival.
+**Status**: News-focused. No active feature work.
 
 ## Recent Changes
 

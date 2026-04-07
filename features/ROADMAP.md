@@ -26,7 +26,7 @@
 
 | # | Feature | Complexity | Doc | Status |
 |---|---------|-----------|-----|--------|
-| 8 | **AI Event Calendar** | C3 | [event_calendar.md](event_calendar.md) | Planning |
+| 8 | ~~AI Event Calendar~~ | C3 | [event_calendar.md](event_calendar.md) | **Killed 2026-04-07** — built then archived. See archive doc for revival recipe. |
 | 9 | ~~Curated Blogs & Research~~ | C2 | [curated_content.md](curated_content.md) | **Deferred** — see decision record |
 
 ---
