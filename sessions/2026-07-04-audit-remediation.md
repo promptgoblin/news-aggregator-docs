@@ -86,6 +86,13 @@ Validation: `tsc --noEmit` clean; `npm run build` clean (8 routes).
 
 **3. Docker prune (safe): dangling images + build cache** — see reclaimed space in final report.
 
+### Daily Top ordering bug (added 2026-07-07, commit `4e5de44` on the same branch)
+Separate from the audit; reported by Mike ("yesterday: 7,6,8,7,7,7 — top stories not at top").
+- **Root cause:** `day_score` grouped days by `func.date(first_seen_at)` in the DB session tz (UTC), while the frontend `FeedList.timeBucket` buckets by the browser's LOCAL day. For a non-UTC viewer a local day straddles two UTC date-groups → backend emits two score-descending runs into one visual day. Confirmed with prod data (a Pacific "July 3" bucket = [UTC-07-04 subset: 7,6] + [UTC-07-03 subset: 8,7,7,7] = 7,6,8,7,7,7).
+- **Fix:** backend `day_score` orders by `date(first_seen_at AT TIME ZONE :tz)` (viewer IANA zone, bound param, `_safe_tz` validates → UTC fallback; new optional `tz` query param). Frontend sends its `Intl` zone; a `tz` cookie carries it to SSR (page.tsx) so SSR + infinite-scroll paginate with one zone; FeedList also score-sorts each rendered day client-side so first paint (pre-cookie) is correct.
+- **Verified:** query render shows bound-param `timezone()`; `_safe_tz` rejects bad/injection input → UTC; prod ordering by LA day now a single descending run per day (07-07: 9,8,8,8,8,7,7,7,7,6,6,6,6,6,6). Frontend tsc + build + lint clean. NOT deployed (ships with this branch).
+- **Efficiency note:** measured on prod — identical query plan, +0.7ms for the tz conversion across 2576 rows (both already seq-scan+sort; no index on first_seen_at). Negligible.
+
 ## ROLLBACK
 - **App (if deployed later and bad):** on server `cd ~/apps/ai-signal/app && git reset --hard 2ffab41 && ./deploy/deploy.sh` then reload nginx. (Locally: `git checkout main` is already at 2ffab41; branch is separate.)
 - **Backup script:** `cp ~/server-infrastructure/backup-databases.sh.pre-shebang-fix.bak ~/server-infrastructure/backup-databases.sh`
