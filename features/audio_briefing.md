@@ -56,6 +56,8 @@ Turn the existing distilled/scored event corpus into a **short, natural, high-si
 
 Ship M0→M2 before touching M3+. Resist scope creep; the daily show is the product.
 
+**Development approach — "cowboy mode" (Mike's call, and correct given zero users yet):** don't gate hard on a hand-built M0 prototype. Build the full pipeline early, but with a first-class **regeneration + comparison harness**: a mode that re-runs select→script→TTS→assemble for a *chosen past day* (or several) **without publishing**, and can generate **multiple variants** (different script providers via `llm_client.py`, different word-range params, different voices) side-by-side. Iterate by listening and regenerating until the prompts/voice/word-ranges are dialed in, then **lock** those params and let the daily cron run against them. Because there are no subscribers, breakage is cheap — the risk is quality, not outage, so optimize the loop for fast listen-and-tune. Concretely: implement a `--regenerate DATE [--provider X] [--voice Y] [--variant-label Z]` CLI that writes variants to a scratch dir and never touches `audio_episodes.status='published'` or the public feed. Keep every variant's `script_json` so a winner can be reproduced. This collapses M0 and M1 into "build it, then tune it," which is the right shape here.
+
 ---
 
 ## 3. Architecture Overview
@@ -79,7 +81,7 @@ DISTRIBUTION (one-time): submit feed URL to Apple/Spotify/YouTube → they poll 
 FRONTEND: /listen page (player + subscribe buttons + transcripts). (§ Frontend)
 ```
 
-**Why a separate job, not bolted onto `run_pipeline`:** different schedule (editorial midnight vs 6/14/22 UTC), and independence — a news-pipeline failure must not block audio and vice-versa. It reuses the same container, DB, Agent SDK auth, advisory-lock pattern, and RSS-XML approach. Model it on `agent/orchestrator.py`.
+**Why a separate job, not bolted onto `run_pipeline`:** different schedule (editorial midnight vs 6/14/22 UTC), and independence — a news-pipeline failure must not block audio and vice-versa. It reuses the same container, DB, config, advisory-lock pattern, and RSS-XML approach. **Script gen uses `llm_client.py` (direct paid API), NOT the Agent SDK** — so the audio job is fully decoupled from the shared Claude-sub quota (see §6). Model the job structure on `agent/orchestrator.py`.
 
 **Reuse, don't rebuild:** selection reuses `src/ai_signal/api/events.py::_build_event_query` (or a small dedicated query); day boundary reuses the tz-aware logic added 2026-07-07; RSS-XML reuses the `Element/SubElement/tostring` approach already in `events.py::rss_feed`; scheduling/lock reuses the orchestrator pattern; secrets go in `src/ai_signal/config.py` `Settings`.
 
@@ -91,10 +93,20 @@ These change the build; get answers early.
 
 1. **Editorial timezone** for "the previous day." Recommend a **fixed** zone (e.g. `America/Los_Angeles` or `America/New_York`) — a public show is one canonical day, not per-listener. This is different from the per-viewer tz on the site feed. **[DECISION NEEDED]**
 2. **Publish time.** "Fires at midnight" → pick the UTC cron time that = shortly after the editorial day ends *and* lands the episode before listeners wake (e.g. 10:00 UTC ≈ 2–3am PT publishes for the US morning). **[DECISION NEEDED]**
-3. **Voice.** One ElevenLabs voice, chosen once, never changed (voice = brand). Option to clone a custom "Goblin News" voice later. **[DECISION NEEDED — do in M0]**
+3. **Voice.** ~~One ElevenLabs voice…~~ **RESOLVED:** design a custom branded voice via ElevenLabs **Voice Design** (prompt-to-voice), audition in M0, lock one `voice_id`. See §7.
 4. **Show branding & structure.** Recommend **one feed** "Goblin News Daily" carrying daily episodes + the weekly recap as a longer Sunday episode (simpler: one subscribe link). Alternative: two separate shows. **[DECISION NEEDED]**
 5. **Signal threshold & length.** Recommend **7+**, target **≤5:00**, higher-signal stories get proportionally more words (§6). Consider **weekdays-only** daily to start (fewer weekend stories). **[DECISION NEEDED]**
 6. **AI-voice disclosure** wording (put it in the show description; lean into it — it's on-brand). Non-optional for platform safety.
+
+**Resolved 2026-07-08 (Mike):**
+- **Voice** → custom ElevenLabs Voice Design (§4.3, §7).
+- **Word budget** → per-tier + total **ranges**, not a max (§6).
+- **Script model** → run on `llm_client.py` (provider-agnostic); **A/B Claude vs DeepSeek vs Grok in M0**, then pick. Decouples from the Claude sub. (§6)
+- **Pronunciation** → prompted-in (phonetic spoken `text` + clean `text_display` for transcript). (§6)
+- **Intro/outro** → Mike generates via **Suno**; chime TBD. (§8)
+- **Dev approach** → cowboy mode: build full pipeline, tune by regeneration, then lock. (§2)
+
+**Still open:** editorial timezone + publish times (§4.1/4.2); one feed vs two shows (§4.4); threshold 7 vs 8 + length cap + weekdays-only (§4.5); show name + cover art; YouTube in M2 or defer.
 
 ---
 
@@ -119,10 +131,10 @@ These change the build; get answers early.
 ### Design rules (encode these in the system prompt)
 - **Write for the ear, not the eye.** Spoken cadence, short sentences, no bulleted lists read aloud, no "colon then list." Contractions. One idea per sentence.
 - **Structure:** cold-open (date + story count + est. length) → per-story segments in signal order → sign-off. Signposting between stories ("Top story…", "Next…", "Also worth knowing…", "Finally…").
-- **Word budget by signal** (length control; TTS ≈ 150 wpm, so ~5 min ≈ ~750 spoken words). Allocate, e.g.: 9 → ~130–160 words + a sentiment beat; 8 → ~90–120 + optional sentiment; 7 → ~45–70. Cap total to the length target; if over, trim lowest-signal first. Make the budget a prompt parameter, not hardcoded prose.
+- **Word budget by signal = a RANGE, not a max** (Mike's call — ranges give the writer room to serve the content: a meaty 9 runs long, a thin one runs short). TTS ≈ 150 wpm, so ~5 min ≈ ~750 spoken words. Give the writer a **per-tier range** and a **total target range**, and let it flex within them: e.g. 9 → **130–190** words (+ a sentiment beat); 8 → **80–130** (+ optional sentiment); 7 → **40–80**. Total target e.g. **550–780** words. Instruct: use the low end for thin stories, the high end for rich ones; if the sum would exceed the total max, trim the lowest-signal stories first (drop, don't crush everything). All ranges are prompt parameters, not hardcoded prose.
 - **Per story:** the *what* (headline in plain speech) → the *key fact(s)* quickly → a brief *"why it matters"* take drawn from `what_this_means` (rephrased for speech, not read verbatim). For 8+, add one sentence of **paraphrased** sentiment ("reaction was split — builders impressed, skeptics flagged the eval methodology"). Never read raw X posts.
 - **No hallucinated specifics.** The script may only use facts present in the provided event fields. Instruct explicitly: do not invent numbers, dates, quotes, or outcomes. (This is user-facing published content — treat like the distiller's opinion-vs-fact guardrails already in the pipeline.)
-- **Pronunciation safety (critical for AI news — see Gotchas):** the prompt must render tricky names/acronyms in a TTS-friendly way. Two layers: (a) tell the model to spell out or phoneticize known-problem tokens in the spoken text (e.g. "GPT-four-oh", "Qwen (pronounced *chwen*)" → but better: pass these through the ElevenLabs **pronunciation dictionary** in §7 so the *visible transcript* stays clean); (b) maintain a shared **lexicon** (see Appendix D) the script prompt is aware of. Prefer fixing pronunciation at the TTS layer so the on-site transcript reads normally.
+- **Pronunciation is handled in the PROMPT (Mike's call):** the script writer is instructed to spell tricky names/acronyms **phonetically in the spoken `text`** (e.g. "GPT-four-oh", "Qwen" → "chwen", "S-L-M"). This avoids standing up the ElevenLabs pronunciation-dictionary infra. **BUT** to keep the on-site transcript/show-notes readable, the writer **also emits a clean `text_display`** per segment (normal spelling) — the phonetic `text` goes to TTS, the clean `text_display` becomes the transcript. Feed the writer the shared **lexicon** (Appendix D) so it knows the known-problem tokens; keep the lexicon easy to extend (new models/names appear weekly). The ElevenLabs pronunciation dictionary (§7) remains an optional upgrade if prompt-phonetics prove inconsistent.
 - **Tone:** confident, concise, lightly personable — a sharp briefer, not a hype man, not a monotone. Match Goblin News brand ("for people who build with AI").
 
 ### Output JSON schema (validate it; retry on mismatch)
@@ -136,7 +148,8 @@ These change the build; get answers early.
       "event_id": "…uuid…",
       "signal": 9,
       "slug": "anthropic-discovers-j-space",
-      "text": "Top story. Anthropic says it's found what it's calling J-Space…",
+      "text": "Top story. Anthropic says it's found what it's calling Jay-Space…",
+      "text_display": "Top story. Anthropic says it's found what it's calling J-Space…",
       "words": 148
     }
   ],
@@ -144,9 +157,13 @@ These change the build; get answers early.
   "show_notes_md": "1. **Anthropic's J-Space** (signal 9) — https://news.promptgoblins.ai/event/…\n2. …"
 }
 ```
-Notes: `text` per segment is what goes to TTS. `show_notes_md` becomes the RSS `<description>`/`<content:encoded>` and the site show-notes (links drive traffic back — see Promotion). `title` should be **search-friendly** (date + top headline) for platform SEO. Keep the on-air URL spoken form ("news dot prompt goblins dot A-I") in `outro` but real links in show notes.
+Notes: `text` (phonetic) per segment goes to **TTS**; `text_display` (clean spelling) is concatenated into the **transcript**. `show_notes_md` becomes the RSS `<description>`/`<content:encoded>` and the site show-notes (links drive traffic back — see Promotion). `title` should be **search-friendly** (date + top headline) for platform SEO. Keep the on-air URL spoken form ("news dot prompt goblins dot A-I") in `outro` but real links in show notes.
 
-**Model:** Sonnet (quality matters here; this is published content). Reuse the `MODELS` mapping in `agent/config.py` (distiller tier). Use `tools=[]` and consider `thinking` **enabled** here (unlike dedup) — reasoning improves script quality and it's one call/episode, so cost is negligible. **Do not** blanket-disable thinking on this stage.
+**Model — use the provider-agnostic `src/ai_signal/llm_client.py`, NOT the Agent SDK (Mike's call).** `LLMClient(provider, model).complete(system, prompt, max_tokens)` already supports `anthropic` / `deepseek` / `grok` on equal footing with per-call cost tracking. This is the right call for three reasons:
+  1. **A/B the script writer** — generate the same episode with multiple providers and pick the one Mike likes (do this in M0). Make `provider`+`model` config (`AUDIO_SCRIPT_PROVIDER`, `AUDIO_SCRIPT_MODEL`).
+  2. **Decouples from the Claude-sub quota** — the Agent SDK draws on Mike's shared Claude Code subscription; a direct paid-API call (pennies/episode) means the podcast never competes with his interactive coding and stays reliable. This makes the podcast the **first stage to move off the Agent SDK** onto `llm_client.py` (the noted migration direction).
+  3. **Same wrapper powers user-facing features** (catch-me-up, etc.) which **cannot** use the Claude sub — DeepSeek via `llm_client.py` is the path there too.
+  Quality: DeepSeek is cheap and fine for *rewriting already-curated* content; still A/B it against Claude (Anthropic API) and Grok. Note: testing the Claude candidate through `llm_client.py` needs a paid `ANTHROPIC_API_KEY` (separate from the sub).
 
 ---
 
@@ -154,7 +171,7 @@ Notes: `text` per segment is what goes to TTS. `show_notes_md` becomes the RSS `
 
 - **Provider:** ElevenLabs (quality leader; there is no Anthropic TTS — this is the one external dependency). Alternatives if cost/latency matter later: OpenAI TTS (cheaper, decent), Google/Azure. Keep the TTS call behind a small `tts.py` interface so the provider is swappable.
 - **Model:** pick the current best natural-narration model (e.g. `eleven_multilingual_v2` or the latest v3-class model) — **[VERIFY current model names/quality]**. Favor quality over the cheapest "turbo/flash" model for a flagship listen.
-- **Voice:** one fixed `voice_id`. Consider cloning a branded voice later.
+- **Voice — design a CUSTOM branded voice via ElevenLabs Voice Design (Mike's call):** generate a voice from a text prompt (describe the ideal Goblin News briefer), audition options in M0, then lock one `voice_id` and never change it (voice = brand). **[VERIFY Voice Design is available on the plan + how to persist the generated voice_id]**. Fallback: pick a stock voice if Voice Design output isn't good enough.
 - **Voice settings:** tune `stability` / `similarity_boost` / `style` for consistent, non-robotic narration; lock the values once chosen.
 - **Continuity across segments:** synthesize per segment but pass `previous_text`/`next_text` (or the request-stitching feature) so prosody is continuous — **[VERIFY the current param names]**. Alternatively synthesize the whole script in one request and mark segment boundaries with silence you detect, but per-segment gives cleaner chime insertion. Prefer per-segment.
 - **Pronunciation dictionary:** upload/attach a **pronunciation dictionary** (alias and/or IPA/CMU phoneme rules) so "Qwen", "GPT-4o", "Hugging Face", "S>Space", model version strings etc. are said correctly **without** mangling the on-site transcript — **[VERIFY dictionary API + which model supports phoneme tags]**. This is the single biggest audio-quality lever for *AI* news. Seed it from Appendix D; make it easy to extend.
@@ -170,7 +187,7 @@ Notes: `text` per segment is what goes to TTS. `show_notes_md` becomes the RSS `
 - **Loudness normalization (required):** normalize the final mix to **-16 LUFS integrated, ≤ -1 dBTP true peak** (Apple/industry spoken-word target) using ffmpeg `loudnorm` (two-pass for accuracy). Inconsistent loudness is the #1 reason a podcast feels amateur and gets skipped.
 - **Encode:** MP3, 128 kbps (spoken word doesn't need more), 44.1 kHz. Keep episodes small — smaller files = faster downloads = fewer drop-offs and cheaper hosting.
 - **ID3 tags:** title, artist ("Goblin News"), album (show name), track/date, cover art embedded, and ideally **chapter markers** (one per story) so players show a chapter list — nice-to-have, high polish. **[VERIFY chapter tag format: ID3 CHAP frames / Podcasting 2.0 `podcast:chapters` JSON]**.
-- **Music licensing (gotcha):** intro/outro/chime music must be **royalty-free/licensed or AI-generated with a clear license** — never a copyrighted track. Platform content-ID takedowns will kill the show otherwise. Store the licensed assets in the repo/asset store with the license noted.
+- **Intro/outro: generated with Suno (Mike will make these).** Confirm the Suno plan grants **commercial/distribution rights** for the generated tracks (paid tiers do — **[VERIFY current Suno license terms for podcast distribution]**) and keep the license/receipt on file, since Spotify/YouTube content-ID can flag music. The **chime/earcon between stories is TBD** — options: a short Suno-generated sting, a simple synthesized tone, or a subtle whoosh; keep it short (~0.4–0.8s) and non-intrusive. Store all audio assets (intro/outro/chime) in the asset store with their license noted; never use a copyrighted track.
 - **Determinism:** given the same script+assets, assembly should be reproducible. Assembly runs offline (no network) — good for retries.
 
 See Appendix C for concrete ffmpeg commands.
@@ -289,7 +306,7 @@ The reason auto-upload "just works": you submit the **feed URL once**; platforms
 
 | Item | Basis | ~Monthly |
 |---|---|---|
-| Script gen (Sonnet, Agent SDK) | 1 call/episode × ~30 episodes; small in/out | **~$3–9** (against the Claude subscription's Agent-SDK credit pool; negligible vs pipeline) |
+| Script gen (`llm_client.py`, direct API) | 1 call/episode × ~30/mo; ~5–10k in, ~1.5k out | **~$0.30/mo (DeepSeek)** to **~$2–3/mo (Anthropic API)**. Direct paid API — does NOT touch the Claude sub quota. |
 | ElevenLabs TTS | ~4k chars/daily + ~8k/weekly ≈ ~130k chars/mo **[VERIFY plan]** | **~$22–99** (Creator ~$22/100k or Pro ~$99/500k) |
 | Storage | ~2 GB/yr on existing disk | **~$0** |
 | Music/assets | one-time licensed pack | one-time |
@@ -373,11 +390,13 @@ HARD RULES
   quotes, names, or outcomes. If unsure, say less.
 - Order stories exactly as given (already ranked by signal). Signpost between them
   ("Top story…", "Next…", "Also…", "Finally…").
-- Word budget per story by its signal (higher signal = more depth):
-  9 → ~130-160 words + one sentence paraphrasing audience sentiment (if provided).
-  8 → ~90-120 words + optional one sentence of paraphrased sentiment.
-  7 → ~45-70 words.
-  Keep the TOTAL under {target_words} words; if over, trim the lowest-signal stories.
+- Word budget per story is a RANGE (use the low end for thin stories, the high
+  end for rich ones — serve the content):
+  9 → {r9_min}-{r9_max} words + one sentence paraphrasing audience sentiment (if provided).
+  8 → {r8_min}-{r8_max} words + optional one sentence of paraphrased sentiment.
+  7 → {r7_min}-{r7_max} words.
+  Keep the TOTAL within {total_min}-{total_max} words; if the sum would exceed
+  total_max, DROP the lowest-signal stories rather than crushing every story.
 - Each story: say what happened in plain speech → the key fact(s) quickly → a brief
   "why it matters" drawn from the provided take (rephrase for speech, don't read it
   verbatim). For 8+, add ONE sentence paraphrasing the sentiment ("reaction was
@@ -385,10 +404,17 @@ HARD RULES
   quotes or social posts.
 - Cold open: date, number of stories, approx length. Sign-off: point to
   "news dot prompt goblins dot A-I" for full stories, and "see you tomorrow".
-- Names/models: write them as normal words; a pronunciation layer handles TTS, so
-  keep the transcript clean (write "GPT-4o", not "GPT four oh").
+- Pronunciation: in each segment's `text` (the spoken version), spell tricky
+  AI names/acronyms PHONETICALLY so the TTS says them right (e.g. "GPT-four-oh",
+  "Qwen" → "chwen", "S-L-M"). Use the provided lexicon; if a name isn't in it and
+  is likely to be mis-said, phoneticize it sensibly. In `text_display` (for the
+  transcript), write the SAME sentence with normal spelling ("GPT-4o", "Qwen").
+  Only `text` and `text_display` differ, and only on tricky tokens.
 
-OUTPUT: JSON exactly matching the provided schema. No prose outside the JSON.
+Provided lexicon (extendable): {lexicon}
+
+OUTPUT: JSON exactly matching the provided schema (each segment has both `text`
+and `text_display`). No prose outside the JSON.
 
 USER (data):
 date: {editorial_date}
@@ -467,7 +493,8 @@ Store as an ElevenLabs pronunciation dictionary (alias/phoneme) **and** a human-
 ---
 
 ## References
-- Reuse: `src/ai_signal/api/events.py` (`_build_event_query`, `rss_feed` XML pattern), `agent/orchestrator.py` (scheduling + advisory-lock pattern, **fixed** version), `agent/config.py` (`MODELS`, budgets), `src/ai_signal/config.py` (`Settings` for secrets), the tz-aware day boundary (added 2026-07-07).
+- Reuse: **`src/ai_signal/llm_client.py`** (provider-agnostic `LLMClient` — anthropic/deepseek/grok, cost-tracked — the script writer; also the path for all user-facing gen that can't use the Claude sub), `src/ai_signal/api/events.py` (`_build_event_query`, `rss_feed` XML pattern), `agent/orchestrator.py` (scheduling + advisory-lock pattern, **fixed** version), `agent/config.py` (budgets), `src/ai_signal/config.py` (`Settings` for secrets), the tz-aware day boundary (added 2026-07-07).
+- Music: **Suno** for intro/outro (Mike; verify commercial license). Voice: **ElevenLabs Voice Design** for a custom branded voice.
 - Lessons: `features/event_calendar.md` (quota discipline — one Sonnet call/episode), `docs/knowledge/gotcha_agent_sdk_overhead.md` (`tools=[]`; keep thinking ON for script quality), `features/ops_notifications.md` (alerting the audio job depends on).
 - Deploy: `deploy/cron/pipeline-cron`, `docker-compose.prod.yml` (add audio volume), nginx config (static `audio/` location with range support), `DEPLOYMENT.md`.
-- New config/env: `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID`, `EDITORIAL_TZ`, `AUDIO_THRESHOLD`, `AUDIO_TARGET_WORDS`, `AUDIO_BASE_URL`.
+- New config/env: `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID`, `AUDIO_SCRIPT_PROVIDER` (anthropic|deepseek|grok), `AUDIO_SCRIPT_MODEL`, plus the provider key it needs (`DEEPSEEK_API_KEY` / paid `ANTHROPIC_API_KEY` / `XAI_API_KEY`), `EDITORIAL_TZ`, `AUDIO_THRESHOLD`, word-range params (`AUDIO_WORDS_*`), `AUDIO_BASE_URL`.
