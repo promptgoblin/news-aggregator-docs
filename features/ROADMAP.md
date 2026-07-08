@@ -1,6 +1,6 @@
 # Goblin News — Feature Roadmap
 
-**Last Updated**: 2026-03-09
+**Last Updated**: 2026-07-08
 
 ## Priority Order
 
@@ -28,6 +28,11 @@
 |---|---------|-----------|-----|--------|
 | 8 | ~~AI Event Calendar~~ | C3 | [event_calendar.md](event_calendar.md) | **Killed 2026-04-07** — built then archived. See archive doc for revival recipe. |
 | 9 | ~~Curated Blogs & Research~~ | C2 | [curated_content.md](curated_content.md) | **Deferred** — see decision record |
+| 10 | **Audio Briefing** (daily/weekly podcast) | C3 | [audio_briefing.md](audio_briefing.md) | Planning (spec'd 2026-07) |
+| 11 | **Storylines** (living-thread pages + synthesis engine) | C3 | [storylines.md](storylines.md) | Planning (spec'd 2026-07) — unlocks catch-me-up, "what happened with X", topic emails, social drafts |
+| 12 | **Email Digest** (daily/weekly, per-user filters) | C2 | [email_digest.md](email_digest.md) | Planning (spec'd 2026-07) |
+
+**Sequencing note (2026-07-08):** Audio and Storylines are the two high-leverage plays; the Email Digest shares infra with both (scheduled job + `llm_client.py` + tz). Storylines is the engine that also powers catch-me-up / semantic-ask / topic-emails / social — highest leverage per build. User-facing generation (storylines, email intros, catch-up) runs on **DeepSeek via `llm_client.py`**, NOT the Claude subscription (the sub can't serve per-user features). Discord/Slack push bot = **parked** until requested (push model = per-subscriber webhook registry + retries = ongoing surface area, unlike pull-based RSS/podcast).
 
 ---
 
@@ -58,6 +63,13 @@
 
 ### Claude Code Updates
 - Track `claude --version` on each pipeline run
+
+### Ingestion Health Audit (noted 2026-07-08 — TODO)
+**We need to periodically verify ingestion is still healthy and sources haven't silently broken.** We've had source issues before (silent ingest decay incident; see `_status.md` and the rate-limit-cascade / monitoring knowledge). This is partly covered by existing pieces but not fully wired:
+- **What exists:** the `/admin/health` dashboard (content + pipeline diagnostics, incl. stale-source detection) and the `ops_notifications.md` spec (per-source ingest-drop alerts, 0-events-in-24h alert) — the latter is **still Planning, not built**.
+- **The gap / TODO:** (1) **build** the ops_notifications alerts (a stale/broken source should page, not decay silently); (2) run a **periodic manual source audit** — are all ~26 sources still returning content, any feed URLs 404/changed, any source producing junk or nothing, do we need to add/drop sources; (3) consider a scheduled automated source-health check (last-article-age per source → alert if a source goes quiet beyond its normal cadence).
+- **Related docs:** `ops_notifications.md`, `pipeline_v2_source_quality.md`, `_status.md` (union-find + rate-limit incidents).
+- **Priority:** not urgent-now, but do before/alongside launching audio + email (a broken pipeline makes a *missing podcast episode / empty digest* very visible to subscribers — reliability becomes a growth feature).
 - Notify Mike via forum bot when version changes
 - Test pipeline output quality after model updates
 - Eventually migrate to API when revenue supports it

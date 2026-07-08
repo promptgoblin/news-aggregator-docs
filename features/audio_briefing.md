@@ -322,7 +322,7 @@ Podcasts grow on **consistency + cross-promotion + searchability**, not virality
 
 **Owned-surface cross-promo (do at M2):**
 - **The site:** a persistent "🎧 Listen — your AI briefing in 5 min" banner + a `/listen` page with player, subscribe buttons (Apple/Spotify/YouTube/RSS), and transcripts.
-- **The forum (promptgoblins.ai):** launch announcement + a pinned "Daily Briefing" thread; auto-post each episode (you already have the Discourse integration + `news` API user — reuse it) so the community gets it in-forum and can discuss. Ask the community to **rate/review on Apple** (ratings drive Apple ranking — this is the cheapest ranking lever you have).
+- **The forum (promptgoblins.ai):** a **one-time launch announcement** + a pinned "how to subscribe" post, and ask the community to **rate/review on Apple** (ratings drive Apple ranking — the cheapest lever you have). **Do NOT auto-post every episode to the forum** — the news site is a subdomain of the forum, so per-episode posts just spam duplicate content. Forum engagement stays user-initiated via the existing **Discuss** button, unchanged.
 - **The text RSS feed & (future) email digest:** add a "listen to today's briefing" link. Audio and the email digest are siblings — build the digest and every email promotes the podcast and vice-versa.
 
 **Searchability / SEO:**
