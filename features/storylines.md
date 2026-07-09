@@ -143,6 +143,21 @@ Thresholds (`STORYLINE_SIM_FLOOR`, `MIN_EVENTS`, `MIN_SPAN`, `DORMANT_DAYS`, top
 
 ---
 
+## 6.1 Event-update awareness (Mike, 2026-07-09)
+
+Events are not static — the pipeline ties new articles to an existing event over time via `create_event_update` (writes an `EventUpdate` with `update_summary` + `article_ids`) and bumps `Event.update_count`. Storylines must treat an **updated event** as a change signal, not just a **new event**:
+- **Trigger:** the assignment/synthesis job runs on events that are new **OR updated** since the last run (track a high-water mark on `updated_at`/`update_count`, or diff `EventUpdate` rows). An update to a member event should re-synthesize its storyline (subject to the only-on-change cost rule).
+- **Narrative reflects the update, with attribution of the shift:** the synthesis prompt should distinguish "a new development in this thread" from "a new outlet is now also reporting the same development, adding [angle]." Feed the member events' `EventUpdate.update_summary` list so the narrative can say e.g. "…and as of today, [outlet] adds [new context/angle]" rather than silently rewriting.
+- **Timeline shows updates:** the storyline page timeline (and any downstream surface) should surface an event's updates ("+2 updates — newest: …"), not just the original event.
+- This is a **consumable "what's new" signal** — see the next note; it's exactly what makes downstream takes feel current instead of stale.
+
+## 6.2 The storyline is a CONTEXT OBJECT for downstream surfaces (Mike, 2026-07-09)
+
+A storyline's value isn't only the on-site page — its **narrative + "what's new since X"** is the broader-context object that other features consume so their output feels situated, not robotic:
+- **Podcast script writer** (see `audio_briefing.md`): when narrating today's event, pass the storyline it belongs to (the "story so far" + latest update) so the writer can give a **situational take** — "this is the latest turn in the ongoing [X] saga; last week [Y], and now [Z]" — instead of an isolated one-event summary. **This is a primary reason storylines is sequenced before the full podcast build.**
+- Also consumed by catch-me-up, "what happened with X," and topic-emails.
+- **Design implication:** the synthesis stage should emit a structured, reusable context object per storyline — `{title, narrative_md, one_liner, whats_new (recent updates/events), member_event_ids, status}` — not just HTML for the page. Store it (`narrative_md` + `summary` cover most; add a `whats_new` field or derive it from recent `storyline_events`/`EventUpdate`) so downstream callers get it cheaply without re-synthesizing.
+
 ## 7. Frontend
 
 - **`/storyline/[slug]`** — blog-format page: title, current `narrative_md`, a "latest update" marker, then a **reverse-chronological timeline** of member events (each a card linking to the event modal/detail). Add JSON-LD (`NewsArticle`/`Article`) + canonical URL + OpenGraph for SEO/shares (the site already needs per-event OG — same pattern).

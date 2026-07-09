@@ -1,15 +1,15 @@
 # Project Status
 
-**Last Updated**: 2026-04-07
+**Last Updated**: 2026-07-09
 
 ## Active Phase
-**Phase**: Phase 2 — Foundation
-**Phase Status**: In Progress — News pipeline running, community voting live. Event calendar built and killed.
+**Phase**: Foundation + Analytics + Storylines Engine — see **[CURRENT_PHASE.md](CURRENT_PHASE.md)** (the followable checklist for what we're building now).
+**Phase Status**: Planning → ready to build. News pipeline live; a security/bug-fix + daily-top-timezone + analytics-CSP-fix branch (`audit-remediation-2026-07-04`) is awaiting merge/deploy.
 
 ## Current Session
 
-**Working On**: News pipeline only. Event calendar feature was killed 2026-04-07 (Sonnet quota burn vs news priority + low demand). See [features/event_calendar.md](features/event_calendar.md) — status: archived. Code, tables, and frontend removed; archive doc preserves prompts/patterns/lessons for revival.
-**Status**: News-focused. No active feature work.
+**Working On:** the phase above — foundation (deploy pending branch, ingestion health + ops alerts, `User.email` capture), Umami analytics rollout, and the **storylines engine** (living-thread pages + the synthesis/context engine that later feeds the podcast, email digest, catch-me-up, and "what happened with X"). Audio M0 listen-test runs in parallel as a cheap go/no-go. Full spec set: `features/storylines.md`, `features/audio_briefing.md`, `features/email_digest.md`.
+**Status:** Active feature work. See [CURRENT_PHASE.md](CURRENT_PHASE.md).
 
 ## Recent Changes
 
