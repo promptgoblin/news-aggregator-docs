@@ -63,11 +63,25 @@ Plan reviewed post-upgrade; adjustments made or noted:
 **Revised P2 order:** TechMeme (P2.4) → HN Algolia (P2.1) → lab scrape (P2.5)
 → finance RSS (P2.6) → Reddit (P2.2). Policy feed (P2.3 replacement) done.
 
+## INCIDENT (2026-07-21): numpy transitive-dep loss killed clustering for 16h
+
+The 07-20 ~08:00 deploy rebuilt the agent image without numpy (never a direct
+dep); clustering ImportError'd every run, swallowed by stage isolation —
+pipeline "completed" with zero events while 74 articles piled up pending.
+Fixed: numpy pinned (`4026a98`), backlog re-run, deploy skill now mandates an
+agent import smoke test + no-deploy-during-pipeline-windows check. Full
+writeup: `knowledge/gotcha_transitive_dep_silent_stage_failure.md`.
+
+**Plan impact:** this is the SECOND incident the P5 "0 events in 24h" DM alert
+would have caught same-day. **P5 is promoted to the front of the next session's
+queue — build alert rule 1 BEFORE continuing P2 sources.** A pipeline that
+silently dies makes every coverage improvement moot.
+
 ## NEXT SESSION — start here
 
 1. Read this doc top to bottom.
 2. **Verify yesterday's work before building:** check regional Google News feeds produced articles (`SELECT s.name, COUNT(*) FROM articles a JOIN sources s ON a.source_id=s.id WHERE s.slug LIKE 'google-news-ai-%' AND a.created_at > NOW() - INTERVAL '1 day' GROUP BY 1;`) and Grok sweep cost stayed sane (`SELECT COUNT(*), SUM(cost_usd) FROM llm_usage_log WHERE pipeline='grok_sweep' AND created_at > NOW() - INTERVAL '1 day';` — expect ≤3 calls, ≤$0.30).
-3. Then execute in the **revised order** (see Model-review notes): **P2.4 TechMeme → P2.1 HN Algolia → P2.5 lab HTML scrape → P2.6 finance RSS → P2.2 Reddit**. Each: implement, test locally, commit, deploy via deploy skill (remember nginx reload), verify articles land. Hold every new source to the EDITORIAL QUALITY BAR section.
+3. **FIRST: P5 alert rule 1 ("0 events in 24h → Discourse DM")** — promoted ahead of everything after the 07-21 numpy incident (see INCIDENT section). Then the revised P2 order: **P2.4 TechMeme → P2.1 HN Algolia → P2.5 lab HTML scrape → P2.6 finance RSS → P2.2 Reddit**. Each: implement, test locally, commit, deploy via deploy skill (remember nginx reload + agent import smoke test), verify articles land. Hold every new source to the EDITORIAL QUALITY BAR section.
 4. After P2 complete: P4 (silent-drop) → P5 (alerts) in one session; P6+P7 (security+reliability) in another; P8 (infra) last.
 5. Deploy skill: `.claude/skills/deploy-goblin-news/SKILL.md`. **Commit to `main`** (not the audit branch — it's stale/deletable). Check `git branch --show-current` before committing.
 
