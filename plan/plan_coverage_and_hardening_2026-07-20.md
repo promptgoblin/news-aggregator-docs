@@ -77,6 +77,18 @@ would have caught same-day. **P5 is promoted to the front of the next session's
 queue — build alert rule 1 BEFORE continuing P2 sources.** A pipeline that
 silently dies makes every coverage improvement moot.
 
+### Systematic test measures (defense in depth — status)
+
+| Layer | What it catches | Status |
+|---|---|---|
+| **Prevent: locked dependency tree** — `constraints.txt` (full pip freeze) used by both Dockerfiles; import audit declared every direct import (`starlette` + `[scripts]` group) | Dependency drift can no longer happen as a rebuild side effect | `[x]` shipped `ec85384` (deploy pending — catch-up run in flight) |
+| **Detect pre-deploy: agent import smoke test** — mandatory deploy-skill step importing orchestrator + all stage/ingestion modules in the container; uses `/proc` (container has no pgrep/ps) | Broken imports before traffic | `[x]` in deploy skill |
+| **Detect pre-deploy: CI** — GitHub Action on push: build agent image, run the same import smoke + `pytest` | Catches the class even when a human/agent skips the skill step | `[ ]` next session, alongside P5 |
+| **Detect in prod: P5 alert rule 1** — "0 events in 24h → Discourse DM" | ANY silent pipeline death, regardless of cause | `[ ]` **first item next session** |
+
+Rule of thumb adopted: *pinning fixes the last incident; the import smoke test
+catches its siblings; the P5 alert catches the ones we haven't imagined.*
+
 ## NEXT SESSION — start here
 
 1. Read this doc top to bottom.
