@@ -11,11 +11,63 @@
 - `[x]` **P2.3 Regional Google News** — AU/UK/IN/JP feeds seeded (part of `ad7cbe7`), active from next pipeline run.
 - Next session: start at **P2.1 (HN Algolia)** — see "NEXT SESSION" below.
 
+## EDITORIAL QUALITY BAR (Mike, 2026-07-21 — applies to ALL source work)
+
+The goal is catching **major stories people expect us to have**, not maximum
+article volume. A story earns ingestion attention if it's meaningful at the
+**industry level** to someone keeping up with AI generally:
+
+- **YES:** frontier-lab moves, major model/product releases, national or
+  bloc-level policy (EU AI Act, Australia regs, UK AI Minister), major-company
+  deals and funding, notable research, significant market events.
+- **NO:** local/regional business deals with no industry implications, vendor
+  PR ("X helps businesses scale with AI"), local-government adoption stories,
+  university program announcements, surveys of local sentiment.
+
+Design consequence: prefer **curated/validated sources** (TechMeme editorial,
+HN points threshold, primary lab blogs) over broad geographic/keyword sweeps.
+When adding any source, ask: "what fraction of this feed clears the bar?"
+If <50%, narrow the query or skip the source — the scorer is the last line
+of defense, not the first.
+
+Candidate (deferred per prompt-tuning strategy — collect data first): add an
+explicit "industry-level significance" line to the scorer guidance. Revisit
+when admin score-adjustment data accumulates.
+
+## Model-review notes (Fable pass, 2026-07-21)
+
+Plan reviewed post-upgrade; adjustments made or noted:
+
+1. `[x]` **P2.3 regional feeds REPLACED** (commit `8593966`) — overnight data
+   showed 83 articles/day of noise; geographic targeting does little for an
+   English `q=AI` search. Now one focused **Google News AI Policy** query
+   (validated clean). AU/UK/IN/JP slugs deactivated.
+2. **P2 reordered by signal-to-noise** (see below) — TechMeme first (editorially
+   curated = exactly the quality bar), Reddit last (noisiest).
+3. **P2.2 Reddit:** unauthenticated `.json` + browser UA got rate-limited on 3
+   of 5 subs during the audit. Register a free Reddit OAuth app (100 QPM) or
+   use the `.rss` endpoints; don't rely on bare JSON.
+4. **P2.5 lab scrape:** check for undocumented RSS before scraping — Meta AI
+   has had `ai.meta.com/blog/rss/`; Mistral may expose a feed. scrape.do only
+   where truly feedless (Anthropic, xAI).
+5. **P2.6 finance:** Bloomberg has no free RSS; The Information is paywalled.
+   Don't burn time — TechMeme carries both outlets' headlines (that's the
+   proxy). Realistic direct adds: CNBC, NYT Tech, Reuters tech.
+6. **P5 addition:** include **Grok cost-cap trips** in the Discourse DM alerts.
+   A cap trip currently only WARNs into pipeline.log — the exact silent-signal
+   antipattern P4 fixes. Also surface `pipeline_runs` + daily Grok spend on
+   `/admin/health`.
+7. Grok sweep 24h check: 3 calls, $0.027 — guardrails working, projection
+   ~$1/mo (not $8).
+
+**Revised P2 order:** TechMeme (P2.4) → HN Algolia (P2.1) → lab scrape (P2.5)
+→ finance RSS (P2.6) → Reddit (P2.2). Policy feed (P2.3 replacement) done.
+
 ## NEXT SESSION — start here
 
 1. Read this doc top to bottom.
 2. **Verify yesterday's work before building:** check regional Google News feeds produced articles (`SELECT s.name, COUNT(*) FROM articles a JOIN sources s ON a.source_id=s.id WHERE s.slug LIKE 'google-news-ai-%' AND a.created_at > NOW() - INTERVAL '1 day' GROUP BY 1;`) and Grok sweep cost stayed sane (`SELECT COUNT(*), SUM(cost_usd) FROM llm_usage_log WHERE pipeline='grok_sweep' AND created_at > NOW() - INTERVAL '1 day';` — expect ≤3 calls, ≤$0.30).
-3. Then execute in order: **P2.1 HN Algolia → P2.2 Reddit → P2.4 TechMeme → P2.5 lab HTML scrape → P2.6 finance RSS**. Each: implement, test locally, commit, deploy via deploy skill (remember nginx reload), verify articles land.
+3. Then execute in the **revised order** (see Model-review notes): **P2.4 TechMeme → P2.1 HN Algolia → P2.5 lab HTML scrape → P2.6 finance RSS → P2.2 Reddit**. Each: implement, test locally, commit, deploy via deploy skill (remember nginx reload), verify articles land. Hold every new source to the EDITORIAL QUALITY BAR section.
 4. After P2 complete: P4 (silent-drop) → P5 (alerts) in one session; P6+P7 (security+reliability) in another; P8 (infra) last.
 5. Deploy skill: `.claude/skills/deploy-goblin-news/SKILL.md`. **Commit to `main`** (not the audit branch — it's stale/deletable). Check `git branch --show-current` before committing.
 
