@@ -11,10 +11,19 @@
   Was ~$5/day of redundant Haiku re-reviews.
 - `[x]` **P2 complete** — TechMeme (P2.4), HN Algolia (P2.1, hnrss.org
   deactivated), Reddit top-of-day via .rss (P2.2; media posts + r/singularity
-  excluded per quality bar), lab scrapes for Anthropic/Meta AI/xAI (P2.5;
+  excluded per quality bar), lab scrapes for Anthropic/xAI (P2.5;
   **Mistral turned out to HAVE RSS** — mistral.ai/rss.xml, seeded as a normal
-  feed), CNBC + NYT tech RSS (P2.6; WSJ/Bloomberg skipped = TechMeme proxy).
-  All four discoverers live-tested against real endpoints before deploy.
+  feed), CNBC tech RSS (P2.6; WSJ/Bloomberg skipped = TechMeme proxy).
+  All discoverers live-tested against real endpoints before deploy.
+  **Post-verification adjustments (commit `7ee5f13`):** CNBC 403s the
+  server's datacenter IP at the feed level → feed fetches now fall back to
+  scrape.do (verified working from the server). **Meta AI blog deactivated**
+  — direct fetch blocked AND scrape.do refuses Meta domains (401); press
+  pool + TechMeme + HN cover Meta launches. **NYT tech deactivated** — hard
+  paywall defeats extraction; TechMeme proxies NYT scoops.
+  First-run yield: HN Algolia 14 articles, xAI News 6, Reddit 3,
+  Anthropic News 2, TechMeme 1 (most TechMeme items deduped against
+  already-known stories, as expected for a proxy source).
 - `[x]` **P4 complete** — `pipeline_runs` + `alert_log` tables (migration
   b19), orchestrator telemetry (articles/events/stage-errors per run),
   silent-drop DEBUG logs → INFO, pipeline logs bind-mounted to
