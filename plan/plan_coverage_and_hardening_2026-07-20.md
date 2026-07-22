@@ -63,6 +63,34 @@ Plan reviewed post-upgrade; adjustments made or noted:
 **Revised P2 order:** TechMeme (P2.4) → HN Algolia (P2.1) → lab scrape (P2.5)
 → finance RSS (P2.6) → Reddit (P2.2). Policy feed (P2.3 replacement) done.
 
+## COST FINDING (2026-07-22): dedup re-reviews the whole event corpus every run
+
+Mike asked whether dedup was really growing quadratically ("I thought we were
+matching against 1-2 weeks only"). Verified in code: **half right.**
+
+- **Clustering** (article→event match) IS windowed: `CLUSTER_EVENT_MATCH_DAYS=14`. ✓
+- **Post-processing dedup** (`pipeline/dedup.py`) is NOT: the candidate query
+  self-joins **all active events against all active events** (2,896 today, only
+  324 from the last 14d) with no time filter, AND Haiku "not the same event"
+  verdicts are never remembered — so the same old pairs get re-reviewed every
+  run, 3×/day, forever. Measured: **10,284 Haiku calls / $7.48 in 36h** (~$5/day,
+  ~$150/mo — 10× the entire plan's incremental budget). Growth is quadratic in
+  corpus size; the redundant re-review is the bigger sin.
+
+**Fix (promoted to next session, alongside P5 — it's ~10 lines):**
+1. Require at least one side of each candidate pair to be *recent* (created in
+   last 48h). New duplicates can only involve a new event; old-vs-old pairs
+   were already adjudicated.
+2. Keep the OTHER side unwindowed **on purpose** — this is what implements
+   Mike's rule: generic re-coverage of a weeks-old event (past the 14-day
+   clustering window) becomes a new event, then dedup merges it into the old
+   event instead of re-publishing it. A genuinely new angle (reaction,
+   follow-up) fails the "same event?" Haiku test and stays separate. Merging
+   does not bump `last_updated_at`, so merged late coverage does not resurface.
+3. Optional (only if cost is still noticeable after #1): persist Haiku verdicts
+   in an `event_pair_reviews` table keyed on (id1, id2) and skip known-"no"
+   pairs.
+
 ## INCIDENT (2026-07-21): numpy transitive-dep loss killed clustering for 16h
 
 The 07-20 ~08:00 deploy rebuilt the agent image without numpy (never a direct
@@ -93,7 +121,7 @@ catches its siblings; the P5 alert catches the ones we haven't imagined.*
 
 1. Read this doc top to bottom.
 2. **Verify yesterday's work before building:** check regional Google News feeds produced articles (`SELECT s.name, COUNT(*) FROM articles a JOIN sources s ON a.source_id=s.id WHERE s.slug LIKE 'google-news-ai-%' AND a.created_at > NOW() - INTERVAL '1 day' GROUP BY 1;`) and Grok sweep cost stayed sane (`SELECT COUNT(*), SUM(cost_usd) FROM llm_usage_log WHERE pipeline='grok_sweep' AND created_at > NOW() - INTERVAL '1 day';` — expect ≤3 calls, ≤$0.30).
-3. **FIRST: P5 alert rule 1 ("0 events in 24h → Discourse DM")** — promoted ahead of everything after the 07-21 numpy incident (see INCIDENT section). Then the revised P2 order: **P2.4 TechMeme → P2.1 HN Algolia → P2.5 lab HTML scrape → P2.6 finance RSS → P2.2 Reddit**. Each: implement, test locally, commit, deploy via deploy skill (remember nginx reload + agent import smoke test), verify articles land. Hold every new source to the EDITORIAL QUALITY BAR section.
+3. **FIRST: (a) dedup recency filter (see COST FINDING — ~10 lines, saves ~$150/mo) and (b) P5 alert rule 1 ("0 events in 24h → Discourse DM")** — both promoted ahead of everything after the 07-21 numpy incident and the 07-22 cost finding. Then the revised P2 order: **P2.4 TechMeme → P2.1 HN Algolia → P2.5 lab HTML scrape → P2.6 finance RSS → P2.2 Reddit**. Each: implement, test locally, commit, deploy via deploy skill (remember nginx reload + agent import smoke test), verify articles land. Hold every new source to the EDITORIAL QUALITY BAR section.
 4. After P2 complete: P4 (silent-drop) → P5 (alerts) in one session; P6+P7 (security+reliability) in another; P8 (infra) last.
 5. Deploy skill: `.claude/skills/deploy-goblin-news/SKILL.md`. **Commit to `main`** (not the audit branch — it's stale/deletable). Check `git branch --show-current` before committing.
 
@@ -268,6 +296,7 @@ P8 INFRA HYGIENE ──► log rotation, docker prune, resource limits, pgvector
 - `[ ]` Alert rule 3: **>5 rate_limit errors in a single run** → per-run DM
 - `[ ]` Alert rule 4: **any newsletter arriving with `No matching source for sender` >3× in a week** → weekly DM digest
 - `[ ]` Alert rule 5: **Claude Sonnet weekly usage >80%** → DM (avoids event-calendar-style quota starvation)
+- `[ ]` Alert rule 6 (added 2026-07-22): **per-run cost anomaly** — single pipeline run > $10 total, or any single stage > 2× its trailing-7-day median → DM. Would have caught the dedup creep (COST FINDING above) without a human eyeballing /admin/usage. Include Grok cost-cap trips here (Fable note #6).
 - `[ ]` Verify: manually break something (deactivate a source) and confirm the DM lands
 
 **Ref:** `features/ops_notifications.md`, `project_monitoring_needed.md`
@@ -294,8 +323,9 @@ P8 INFRA HYGIENE ──► log rotation, docker prune, resource limits, pgvector
 **Outcome:** one bad stage doesn't kill downstream; long HTTP calls don't hold DB row locks; silent failures surface.
 
 **Tasks:**
-- `[ ]` **Stage isolation** — wrap each pipeline stage in the orchestrator with try/except; log stage error to `pipeline_runs`; continue to next stage instead of aborting (avoids sentiment `float()` crash killing everything)
-- `[ ]` **Advisory lock try/finally** — `orchestrator.py:44-73`, ensure `pg_advisory_unlock` runs even on exception
+- `[x]` **Stage isolation** — ALREADY SHIPPED (verified 2026-07-22: `orchestrator.py:49-83`). Remaining work moved to the next task: isolation without visibility is what hid the numpy break.
+- `[ ]` **Make isolated stage failures LOUD** — record each stage exception into `pipeline_runs.errors_json` (P4) and have the P5 alert checker DM on "any stage failed in ≥2 consecutive runs". Isolation exists; silence is the remaining bug.
+- `[ ]` **Advisory lock try/finally** — likely already shipped (`orchestrator.py:92-93` has release-with-fallback); VERIFY it's in a `finally:` before writing code, close if so
 - `[ ]` **Session/lock leak across HTTP** — refactor `sentiment.py:204`, `clustering.py:597`, `events.py:590` (discuss) to commit BEFORE the external call, not after
 - `[ ]` **Clustering batch commits** — commit per-batch, not just at the end, so a crash mid-run doesn't re-bill Haiku
 - `[ ]` **Embedding failures surface** — `rss.py:261`, don't swallow to `None`; raise/log so a dead OpenAI key doesn't silently stall clustering
@@ -309,7 +339,7 @@ P8 INFRA HYGIENE ──► log rotation, docker prune, resource limits, pgvector
 
 **Tasks:**
 - `[ ]` **Log rotation** for `/var/log/pipeline.log` — logrotate config, daily, 14-day retention
-- `[ ]` **Docker cache reclaim** — schedule weekly `docker system prune -a --volumes` (with volume-preservation flag if any user volumes)
+- `[ ]` **Docker cache reclaim** — schedule weekly `docker system prune -a` **WITHOUT `--volumes`** (edited 2026-07-22: the postgres data lives in a named volume; `--volumes` on a DB host is a data-loss footgun if it ever runs while containers are down). Add `docker builder prune` for build cache.
 - `[ ]` **Resource limits** on containers — `mem_limit` / `cpus` in docker-compose (many services have it; audit the rest)
 - `[ ]` **Pin pgvector image** to `pgvector/pgvector:pg17.4` (or current minor) — avoid silent breaking upgrades
 - `[ ]` **Cache-Control** — carve out `/api/events*`, `/rss.xml`, other public endpoints from the global `no-store`; use short TTL + CDN-friendly caching
