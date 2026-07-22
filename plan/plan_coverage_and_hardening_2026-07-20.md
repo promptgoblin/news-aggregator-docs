@@ -1,8 +1,60 @@
 # Goal: 90%+ coverage of top AI stories + full hardening pass
 
-**Started:** 2026-07-20 · **Owner:** Mike (with Claude) · **Status:** in progress — P0/P1/P3 done, P2 partial
+**Started:** 2026-07-20 · **Owner:** Mike (with Claude) · **Status:** COMPLETE 2026-07-22 (all phases; residual items listed in the 07-22 progress entry)
 
 ## Progress log
+
+**2026-07-22 (session 3 — full punch list, app commit `d7c7219`):**
+- `[x]` **Dedup cost fix** — recency filter (one side of every candidate pair
+  must be <48h old, other side deliberately unwindowed so late generic
+  re-coverage merges into the original event instead of re-publishing).
+  Was ~$5/day of redundant Haiku re-reviews.
+- `[x]` **P2 complete** — TechMeme (P2.4), HN Algolia (P2.1, hnrss.org
+  deactivated), Reddit top-of-day via .rss (P2.2; media posts + r/singularity
+  excluded per quality bar), lab scrapes for Anthropic/Meta AI/xAI (P2.5;
+  **Mistral turned out to HAVE RSS** — mistral.ai/rss.xml, seeded as a normal
+  feed), CNBC + NYT tech RSS (P2.6; WSJ/Bloomberg skipped = TechMeme proxy).
+  All four discoverers live-tested against real endpoints before deploy.
+- `[x]` **P4 complete** — `pipeline_runs` + `alert_log` tables (migration
+  b19), orchestrator telemetry (articles/events/stage-errors per run),
+  silent-drop DEBUG logs → INFO, pipeline logs bind-mounted to
+  `~/apps/ai-signal/app/logs/` + daily logrotate (14-day retention).
+- `[x]` **P5 complete** — `agent/alerts.py`, Discourse DMs via the news bot:
+  zero-events-24h, stage failures, cost anomaly (run >$10 / Grok ≥$0.45-day /
+  Grok silent 26h), stuck runs (>4h 'running' = died mid-flight), Sonnet
+  weekly cost >$100 (quota-starvation proxy), weekly digests for stale
+  sources + unmatched newsletter senders. Cooldowns via alert_log. Fires
+  post-run from the orchestrator AND from a daily 08:30 UTC cron (catches
+  the pipeline-too-dead-to-alert case). Runs + Grok spend on /admin/health.
+- `[x]` **P6** — agent jobs now run as non-root `pipeline` user (cron.d user
+  field; Claude CLI under that user; SDK actually uses its bundled CLI).
+  Injection preamble added to the event-intel runbook. SSRF guard + env-dump
+  filtering + open-redirect + tools=[] were verified ALREADY SHIPPED from the
+  audit branch era. **clawrxiv-data 3001/4001 found already bound to
+  127.0.0.1** — closed. JWT iss/aud stays accepted-risk.
+- `[x]` **P7** — no DB session held across HTTP (sentiment, clustering,
+  grok_sweep ingest loop); clustering commits HyDE summaries before the
+  embed/validate stages (crash ≠ Haiku re-billing, summaries reused on
+  retry); embedding outage now raises loudly instead of stalling silently;
+  stage isolation + advisory-lock finally were verified already shipped.
+- `[x]` **P8** — pgvector pinned by digest; in-container logrotate; weekly
+  host cron `docker system prune -af` + builder prune (NO --volumes);
+  **`/var/run/reboot-required` is gone** — reboot no longer pending, closed.
+  Container mem limits verified already present; CPU limits deliberately
+  skipped.
+- `[x]` **Test measures** — 29 hermetic unit tests (grok/normalize/validate
+  parsers, graph fns, SSRF + open-redirect guards, aggregator parsing) run
+  in-container; GitHub Actions CI builds the real agent image → import smoke
+  → pytest → frontend tsc+build on every push. Local pre-deploy verification
+  built the image and ran ALL of it before pushing.
+- **Residual / follow-ups:**
+  - Check the first CI run succeeded on GitHub (gh CLI unauthenticated on
+    the dev box).
+  - Alert rules verified by test DM at deploy; rule thresholds
+    (RUN_COST=$10, SONNET_WEEK=$100) are constants in `agent/alerts.py` —
+    tune when real data accumulates.
+  - Post-goal 48h coverage re-audit (same 4-subagent panel) still to run
+    after the new sources have a few days of data.
 
 **2026-07-20 (session 1):**
 - `[x]` **P0** — no-op: audit branch had zero diff vs main (everything already cherry-picked/merged). Branch can be deleted.
@@ -119,11 +171,16 @@ catches its siblings; the P5 alert catches the ones we haven't imagined.*
 
 ## NEXT SESSION — start here
 
-1. Read this doc top to bottom.
-2. **Verify yesterday's work before building:** check regional Google News feeds produced articles (`SELECT s.name, COUNT(*) FROM articles a JOIN sources s ON a.source_id=s.id WHERE s.slug LIKE 'google-news-ai-%' AND a.created_at > NOW() - INTERVAL '1 day' GROUP BY 1;`) and Grok sweep cost stayed sane (`SELECT COUNT(*), SUM(cost_usd) FROM llm_usage_log WHERE pipeline='grok_sweep' AND created_at > NOW() - INTERVAL '1 day';` — expect ≤3 calls, ≤$0.30).
-3. **FIRST: (a) dedup recency filter (see COST FINDING — ~10 lines, saves ~$150/mo) and (b) P5 alert rule 1 ("0 events in 24h → Discourse DM")** — both promoted ahead of everything after the 07-21 numpy incident and the 07-22 cost finding. Then the revised P2 order: **P2.4 TechMeme → P2.1 HN Algolia → P2.5 lab HTML scrape → P2.6 finance RSS → P2.2 Reddit**. Each: implement, test locally, commit, deploy via deploy skill (remember nginx reload + agent import smoke test), verify articles land. Hold every new source to the EDITORIAL QUALITY BAR section.
-4. After P2 complete: P4 (silent-drop) → P5 (alerts) in one session; P6+P7 (security+reliability) in another; P8 (infra) last.
-5. Deploy skill: `.claude/skills/deploy-goblin-news/SKILL.md`. **Commit to `main`** (not the audit branch — it's stale/deletable). Check `git branch --show-current` before committing.
+**The plan is COMPLETE (2026-07-22, see progress log).** What's left is
+verification-over-time, not building:
+
+1. **Verify the new sources are producing** (after ≥1 day of runs):
+   `SELECT s.name, COUNT(*) FROM articles a JOIN sources s ON a.source_id=s.id WHERE s.slug IN ('techmeme','hn-algolia','reddit-ai','anthropic-news','meta-ai-blog','xai-news','mistral-blog','cnbc-tech','nyt-tech') AND a.created_at > NOW() - INTERVAL '2 days' GROUP BY 1;`
+2. **Verify dedup cost collapsed:** `SELECT count(*), sum(cost_usd) FROM llm_usage_log WHERE stage='dedup_review' AND created_at > now() - interval '1 day';` — expect a few hundred calls/day at most (was ~7,000).
+3. **Verify telemetry + alerts:** `SELECT started_at, status, duration_s, articles_ingested, events_created FROM pipeline_runs ORDER BY started_at DESC LIMIT 5;` and check /admin/health shows the runs table. Alert DMs: check Mike's forum inbox — a persistent condition DMs at most once per cooldown.
+4. **Check the first GitHub Actions CI run** on promptgoblin/news-aggregator (couldn't verify from the dev box — gh unauthenticated).
+5. **Post-goal re-audit** (from "Post-goal" section below): once the new sources have ~3 days of data, re-run the 4-subagent 48h coverage audit. Target ≤2 tier-1/2 misses.
+6. Deploy skill: `.claude/skills/deploy-goblin-news/SKILL.md`. **Commit to `main`.** Check `git branch --show-current` before committing.
 
 > Runnable plan (/goal) that closes the coverage gap surfaced in the 2026-07-20
 > source audit AND ships the hardening backlog from the 2026-07-04 audit +
