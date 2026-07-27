@@ -53,6 +53,20 @@ failed the quality gate anyway. ~60 guaranteed-failure calls/day × 5 credits.
    unrelated-looking features degrade at once.
 6. **Poll frequency matches content velocity.** Lab blogs post a few times a
    month → scrape their index once a day, not every pipeline run.
+7. **Degrade to the curator's summary — never silently drop a curated story.**
+   Corollary of rules 2-3: once you stop paying to beat paywalls, you must
+   not let "couldn't fetch" mean "story doesn't exist." The July 2026 coverage
+   audit found the SK-Nvidia $500B deal, the Kimi K3 weights drop, and the
+   Nvidia-OpenAI $250B backstop all *discovered* (TechMeme/Grok sweep) then
+   *dropped* because the linked page was paywalled, bot-walled, or a junk URL
+   — in one run TechMeme surfaced 15 candidates and 2 survived. Curated feeds
+   ship an accurate one-paragraph summary with every link; headline + curator
+   summary is enough to cluster and score. Goblin News:
+   `build_fallback_content()` in `newsletter.py` (used by newsletter,
+   TechMeme, and Grok-sweep ingestion), `content_fallback` metadata flag
+   exempts the short content from the min-length clustering gate, and
+   `curator_summary` is surfaced to the scoring agent so it judges the story,
+   not the fetch quality.
 
 ## Budget math (free tier = 1,000/month ≈ 33/day)
 
