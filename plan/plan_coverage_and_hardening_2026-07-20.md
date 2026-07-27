@@ -190,6 +190,7 @@ verification-over-time, not building:
 4. **Check the first GitHub Actions CI run** on promptgoblin/news-aggregator (couldn't verify from the dev box — gh unauthenticated).
 5. **Post-goal re-audit** (from "Post-goal" section below): once the new sources have ~3 days of data, re-run the 4-subagent 48h coverage audit. Target ≤2 tier-1/2 misses.
 6. Deploy skill: `.claude/skills/deploy-goblin-news/SKILL.md`. **Commit to `main`.** Check `git branch --show-current` before committing.
+7. **Newsletter overlap re-measurement (after ~Aug 15):** scrape.do quota reset ~Aug 1 brings the beehiiv newsletters (Alpha Signal, AI Daily Brief, Import AI) back. In the 30 days before the July outage they were the ONLY source on 16 events (1×score-9, 2×8, 8×7, 5×6) — but that predates the July-22 sources (HN Algolia, Grok sweep, TechMeme, lab scrapes) which target the same research/HN-forward class. After 2-3 weeks of side-by-side running, re-run the newsletter-only-events query: if the newsletter-unique rate stays ~4/wk with 8+s in it, the $29/mo scrape.do tier buys real coverage insurance; if it collapses to ~1/wk of 6s, free tier is fine forever. Decision is Mike's.
 
 > Runnable plan (/goal) that closes the coverage gap surfaced in the 2026-07-20
 > source audit AND ships the hardening backlog from the 2026-07-04 audit +
