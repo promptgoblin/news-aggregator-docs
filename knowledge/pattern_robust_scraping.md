@@ -36,8 +36,13 @@ failed the quality gate anyway. ~60 guaranteed-failure calls/day × 5 credits.
    - Goblin News: `_HARD_PAYWALL_DOMAINS` denylist (FT, Bloomberg, WSJ, NYT,
      Economist, The Information, WaPo, SeekingAlpha) — the proxy can beat
      bot walls but not server-side paywalls; skip instantly, 0 credits.
-     (News needs deny- rather than allow-listing because its URL universe is
-     open-ended; gift links cluster on a few retailers.)
+   - Goblin News, since 2026-08-03: ALSO allowlist-gated, same as giftmochi —
+     `_JS_RENDER_DOMAINS` (beehiiv/OpenAI/DeepMind, render) +
+     `_SCRAPE_DO_RENDERLESS_DOMAINS` (CNBC/Reuters, 1 credit). The original
+     "News's URL universe is open-ended, so denylist" rationale died once
+     rule 7's summary fallback existed: a long-tail 403 now degrades for
+     free, so failure-triggered credits (~30-50 attempts/day observed) buy
+     almost nothing.
 3. **`render=true` costs 5× — never default to it.** Most anti-bot walls are
    IP-reputation checks; the proxy's IPs beat them without a browser
    (1 credit). Keep an explicit `_JS_RENDER_DOMAINS` list for the few sites
@@ -49,8 +54,12 @@ failed the quality gate anyway. ~60 guaranteed-failure calls/day × 5 credits.
    Same principle: never pay twice for the same URL.
 5. **Monitor the quota, loudly.** `GET https://api.scrape.do/info?token=…`
    returns `RemainingMonthlyRequest`. Goblin News DMs Mike at <150 remaining
-   (daily alert cron). Exhaustion is a silent-decay multiplier — several
-   unrelated-looking features degrade at once.
+   (daily alert cron) and again when the quota recovers after an exhaustion.
+   Exhaustion is a silent-decay multiplier — several unrelated-looking
+   features degrade at once.
+   **Gotcha (learned 2026-08-03): the monthly window is anniversary-based,
+   not calendar-month.** The July 2026 exhaustion did NOT reset on Aug 1 —
+   "wait for the 1st" is wrong; watch `/info` (the recovery alert does).
 6. **Poll frequency matches content velocity.** Lab blogs post a few times a
    month → scrape their index once a day, not every pipeline run.
 7. **Degrade to the curator's summary — never silently drop a curated story.**
