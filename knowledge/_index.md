@@ -38,9 +38,11 @@ USAGE: grep/search for your keyword → load specific referenced file(s)
 
 ## Goblin News Pipeline
 **Clustering**: [gotcha_unionfind_transitive_closure.md] — Union-find + embedding similarity causes mega-clusters via transitive closure. Fixed with HyDE (Haiku normalization before embedding).
+**Stale news / recency**: [gotcha_stale_story_republished.md] — months-old Grok sweep story published as a score-9 top story: no dates, no clock in the agents, merge-fed saga aged out of the match window, dedup prompt had no "old news" answer. Six date-blind layers, fixed 2026-09-01.
 **LLM Cost**: [gotcha_agent_sdk_overhead.md] — Wrapping a yes/no LLM call in Claude Agent SDK costs ~155× more tokens per call than a direct API call. Dedup stage was $482/mo; direct API would be ~$1–5/mo at the same model.
 
 ## Recent Additions
+- **2026-09-01**: [gotcha_stale_story_republished.md] - Old story republished as breaking news; date gates + agent clock + stale dedup verdict (production trust incident)
 - **2026-06-03**: [gotcha_agent_sdk_overhead.md] - Claude Agent SDK adds ~21,500 tokens/call of hidden scaffolding (critical for high-volume single-purpose calls)
 - **2026-03-09**: [gotcha_unionfind_transitive_closure.md] - Union-find transitive closure destroys clustering (4+ hours, critical)
 
