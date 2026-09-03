@@ -42,16 +42,34 @@ the saga event, so nobody noticed.
 - `clustering.py`: "recently active" = `last_updated_at` in window OR an
   article ingested in window (`EXISTS` on articles), so merge-fed sagas stay
   matchable.
-- `dedup.py`: pairs are presented chronologically (OLDER/NEWER with dates); a
-  third verdict `stale` merges the newer copy INTO the older event without
-  adopting its score (`_merge_event(adopt_score=False)`, method
-  `haiku-stale`, counter `stale_merged`).
+- `dedup.py`: pairs are presented chronologically (OLDER/NEWER with dates).
+  **A third verdict, `stale`, was tried and REMOVED two days later** — see
+  "What went wrong with the dedup layer" below.
 - Runbooks: SCORER gets `TODAY (UTC) is <date>` (`TODAY_SENTINEL` substituted
   in `build_subagents`) and a hard rule — stale re-coverage scores 3;
   EVENT_INTELLIGENCE gets a STALE RE-COVERAGE section with the skip-log shape
   (`decision="skip — stale re-coverage (...)"`, which the record_pipeline_log
   flip contract already handles). `get_cluster_summary` returns `today` and
   per-primary-article `published_at`; the dispatch message states the date.
+
+## What went wrong with the dedup layer (2026-09-03)
+
+The `stale` verdict ("the newer event is re-coverage of the older one's
+story → merge it into the older event") looked right for the Manus case and
+was wrong almost everywhere else. In two days Haiku applied it to 47 pairs:
+the Fable 5.1 launch (5 sources, score 9) vanished into an 82-day-old
+"leaked system prompt" story, the Gemini 3.8 Flash release into a
+two-month-old LM Arena sighting, the OpenAI Astra delay into an unrelated
+Anthropic story (taking the editor's score adjustment with it), an Uber
+robotaxi launch into a cab-driver reaction, an acquisition into an
+earnings report. A one-turn, no-thinking yes/no reviewer cannot judge
+"is the newer one a NEW development" — it pattern-matches on shared
+entities. **Over-merging hides fresh news, which is as damaging as showing
+stale news.** Reverted with `scripts/revert_stale_merges.py` (articles
+back by cluster including auto-merge subtrees, editor adjustments back by
+resulting score + window, `event_merges` rows kept as `reverted:`
+provenance, invariant ignores them). Dedup is yes/no again; stale news is
+stopped upstream (sweep date gate, EI staleness skip, research event_date).
 
 ## Lessons
 
@@ -64,8 +82,9 @@ the saga event, so nobody noticed.
 - **"Recently active" must include merges.** Any bookkeeping that attaches
   children without bumping the activity timestamp silently ages an event out
   of the match window.
-- **A dedup prompt that only knows "same vs distinct" cannot express "old
-  news".** Give it the chronology and a third answer.
+- **Do not ask the dedup reviewer to judge staleness.** It cannot tell
+  "re-coverage" from "new chapter"; give it the chronology for context, but
+  keep the verdict yes/no and stop stale stories before they become events.
 
 ## When NOT to apply
 
