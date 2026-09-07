@@ -7,6 +7,7 @@ USAGE: grep/search for your keyword → load specific referenced file(s)
 
 ## Search by Keyword
 
+**Ingestion**: [gotcha_feed_redirect_dedup.md] (re-ingest every run, redirecting feed links, repair_duplicate_articles), [pattern_robust_scraping.md]
 **Pipeline/Scoring**: [gotcha_scorer_exemplar_bias.md] (score inflation, calibration exemplars, 9 gate, eval_scorer replay), [gotcha_stale_story_republished.md], [gotcha_agent_sdk_overhead.md], [gotcha_rate_limit_cascade.md]
 **Auth/Security**: [gotcha_jwt_refresh_race_condition.md], [gotcha_cors_preflight_cookies.md], [gotcha_oauth_popup_blockers.md]
 **Database**: [gotcha_prisma_json_typing.md], [gotcha_postgres_timezone.md], [gotcha_transaction_deadlocks.md], [perf_database_n_plus_one.md]
