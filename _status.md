@@ -1,6 +1,6 @@
 # Project Status
 
-**Last Updated**: 2026-07-09
+**Last Updated**: 2026-09-07
 
 ## Active Phase
 **Phase**: Foundation + Analytics + Storylines Engine — see **[CURRENT_PHASE.md](CURRENT_PHASE.md)** (the followable checklist for what we're building now).
@@ -12,6 +12,13 @@
 **Status:** Active feature work. See [CURRENT_PHASE.md](CURRENT_PHASE.md).
 
 ## Recent Changes
+
+### 2026-09-07 — Signal score inflation fix
+
+- **SCORER rewritten as one rubric** (`agent/runbooks.py`): ordered procedure, closed **9 GATE** (flagship generation / operative ruling / closed structural deal / live practitioner-impacting incident), class ceilings instead of floors, new classes for prospective deals, satellites, AI-behavior incidents, lawsuits filed, earnings. JSON gained `story_class` + `gate`; the EI runbook clamps a gate-less 9 to 8 and routes satellites to updates.
+- **Curated balanced exemplars** replace the live `score_adjustments` feed (which ran 100% upgrades Aug 13–Sep 1 and piped raw editor notes into the prompt). Editor reasons are tuning input, distilled by hand.
+- **Week-context anchors**: the week's 8+ events are injected into the scorer prompt per batch (relative placement without a per-day quota).
+- **`score_inflation` alert** (>2 nines/24h or 8+ share >35% over 3d) and **`scripts/eval_scorer.py`** offline replay harness — run it before shipping any scorer change. Write-up: `knowledge/gotcha_scorer_exemplar_bias.md`.
 
 ### 2026-03-23 — 2026-03-25
 
