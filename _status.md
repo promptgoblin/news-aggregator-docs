@@ -1,6 +1,6 @@
 # Project Status
 
-**Last Updated**: 2026-09-07
+**Last Updated**: 2026-09-11
 
 ## Active Phase
 **Phase**: Foundation + Analytics + Storylines Engine — see **[CURRENT_PHASE.md](CURRENT_PHASE.md)** (the followable checklist for what we're building now).
@@ -12,6 +12,14 @@
 **Status:** Active feature work. See [CURRENT_PHASE.md](CURRENT_PHASE.md).
 
 ## Recent Changes
+
+### 2026-09-11 — Scorer follow-through, quota back-off, landing tagline
+
+- **Scorer v3 tightening + anchor cutoff** (app 5a318c8, deployed 06:55 UTC): the first live days ran 8+ at 21→32% because the week-anchor block was 52 old-prompt 8s vs 6 new — anchors now never predate `RECENT_TOP_SINCE` (bump it whenever the scale is redefined); loans/rounds are 7 regardless of size, papers/experiments are 7 however striking, a milestone claim is a 7, executive statements/predictions/interviews are insight pieces never 8. Four gate-failing 9s (an AGI-roadmap statement, Mistral's round, a Navier-Stokes proof claim, an April sandbox incident) lowered with provenance.
+- **5-hour-window back-off** (905aa8c): EI probes the limiter's unified-window headers before the first batch and on any 429; waits for a reset within `EI_QUOTA_MAX_WAIT_MIN` (45) and retries the batch once, else defers the rest to the next run and DMs `claude_quota_exhausted`. Replaces "stall into two dead batches, then abort".
+- **RSS first-poll bootstrap rows** (bfdab32): older entries at a feed's first poll are recorded as seen, so the second (cutoff-free) poll never ingests history — the 09-07 14:00 run took 323 articles and exhausted the 5-hour window that way.
+- **Landing**: tagline "AI news, distilled." (46e1fa9) replaces the header attribution; metadata aligned; About source count 60+. Proof-count line and intro strip rejected by Mike (counts undersell; distillation is the record's presentation). `/api/stats/today` exists but is unused.
+- Ops: one nightly invariant DM (Gemini 3.7 Flash source_count drift from the 09-07 cleanup) fixed; scrape.do reset on the 10th (981/1000).
 
 ### 2026-09-07 — Signal score inflation fix
 
