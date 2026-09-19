@@ -38,10 +38,9 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 
 ## 0. Foundation (do first — small, unblocks everything)
 
-### 0.1 Ship the pending branch  `[ ]`
-Merge + deploy `audit-remediation-2026-07-04` (carries the security/bug fixes, the **daily-top timezone fix**, AND the **CSP fix that unblocks Umami analytics**), then reload nginx.
-- **Ref:** `sessions/2026-07-04-audit-remediation.md`; deploy skill (`./deploy/deploy.sh` + `docker exec nginx-proxy nginx -s reload`).
-- **Done when:** site 200, `/api/health` ok, right commit live, daily-top ordering correct in-browser, no CSP console errors from the Umami script.
+### 0.1 Ship the pending branch  `[x]` (done ~2026-07)
+Merged `audit-remediation-2026-07-04` into `main` and deployed. Confirmed live in `main`: `6da53f8` (daily-top timezone fix) + `b9236ce` (pipeline hardening: tools=[], SSRF guard, lock/stage isolation). Umami collecting proves the CSP fix shipped. Newer work has since landed on top (scrape.do discipline, feed fixes, quota alerts).
+- **Ref:** `sessions/2026-07-04-audit-remediation.md`.
 
 ### 0.2 Ingestion health audit + build ops alerts  `[ ]`
 We've had silent source decay before; reliability must precede any subscriber-facing launch.
@@ -58,13 +57,16 @@ Small prerequisite for the (next-phase) email digest — do it now while it's ch
 
 ---
 
-## 1. Analytics rollout (Umami)  `[ ]`
-**Status of what exists:** the tracker is already wired in the frontend (`frontend/src/app/layout.tsx`, gated by `NEXT_PUBLIC_UMAMI_WEBSITE_ID` + `NEXT_PUBLIC_UMAMI_SRC`); Umami is self-hosted at `analytics.promptgoblins.ai` (memory `reference_umami_analytics.md`). **There is NO dedicated analytics plan doc** — this section is it. The audit found the tracker **CSP-blocked → ~zero data**; the fix is on the branch (0.1).
+## 1. Analytics rollout (Umami)  `[~]` (core done; custom events remain)
+**Status of what exists:** the tracker is wired in the frontend (`frontend/src/app/layout.tsx`, gated by `NEXT_PUBLIC_UMAMI_WEBSITE_ID` + `NEXT_PUBLIC_UMAMI_SRC`); Umami is self-hosted at `analytics.promptgoblins.ai`. **This section is the analytics plan** (no other doc). Umami is **live and collecting** as of 2026-07-27 (DNS via Cloudflare, HTTPS+HSTS, heartbeat ok).
 
-- `[ ]` **Deploy the CSP fix** (0.1) so `analytics.promptgoblins.ai` is allowed in `script-src` + `connect-src`.
-- `[ ]` **Confirm env vars are set in the prod build** — `NEXT_PUBLIC_UMAMI_WEBSITE_ID` + `NEXT_PUBLIC_UMAMI_SRC` are `NEXT_PUBLIC_*` (baked at build), so verify they're present when `ai-signal-web` is built, and the website is registered in the Umami dashboard.
-- `[ ]` **Verify data flows** — load prod, confirm no CSP violations in console, confirm hits appear in the Umami dashboard.
-- `[ ]` **Add custom events** (Umami `data-*` / `umami.track`) for the actions that matter: event opens, "Discuss" clicks, votes, bookmarks, RSS/subscribe clicks, filter/score usage. (Later: audio plays, email opens, storyline views.) These are the metrics that tell us what's working once features ship.
+**Security decision (2026-07-27):** Umami OSS has no built-in 2FA. Chose to **accept the risk** rather than add a gate — mitigations in place: strong unique admin password, admin username renamed off the default, no published Docker ports (internal-only behind nginx), HTTPS/HSTS. Rationale: low-sensitivity data (traffic stats, no PII/money), small blast radius, and every 2FA option (Cloudflare Zero Trust, self-hosted forward-auth/TOTP) added more ongoing ops/lockout risk than it was worth for this asset. Revisit only if the dashboard ever holds something sensitive.
+
+- `[x]` **Deploy the CSP fix** — shipped with 0.1; `analytics.promptgoblins.ai` allowed in `script-src` + `connect-src`.
+- `[x]` **Env vars set in prod build** + website registered in Umami dashboard.
+- `[x]` **Data flows** — Umami live and collecting pageviews.
+- `[ ]` **Add custom events** (Umami `data-*` / `umami.track`) for the actions that matter: event opens, "Discuss" clicks, votes, bookmarks, RSS/subscribe clicks, filter/score usage. (Later: audio plays, email opens, storyline views.) **This is the remaining, high-value piece** — right now we only see pageviews, not behavior.
+- `[ ]` **Agent read-access to Umami** (for analysis, feeding curation/scoring) — internal path `http://umami:3000/api/...` (Umami is on shared `server-infrastructure_webnet`), Umami API key or read-only DB. Build once there's enough data to analyze.
 - **Done when:** real pageviews + a first custom event show up in Umami for prod traffic.
 
 ---

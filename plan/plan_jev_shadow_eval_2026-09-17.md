@@ -1,6 +1,6 @@
 # Plan: Jev (TypeSafe) shadow eval for dedup review — 2026-09-17
 
-**Status:** investigation done, harness built, blocked on `TYPESAFE_API_KEY`.
+**Status:** shadow LIVE in prod since 2026-09-18 (see "Status 2026-09-19" below).
 **Goal:** find out whether Jev can replace (or front-run) Haiku on the pairwise "same event?" dedup
 review, and whether its price makes a wider similarity band / longer lookback worthwhile.
 Haiku stays authoritative throughout; Jev is record-only.

@@ -106,3 +106,79 @@ async def notify_forum(subject: str, body: str, target_user_id: int = 1):
 - [ ] Create "Goblin News" bot user on Discourse (shared with discuss feature)
 - [ ] Generate scoped API key for bot
 - [ ] Decide: should notifications also go to a public "ops" topic for transparency?
+
+---
+
+## Add-on: Invariant check integration (deferred — added 2026-04-08)
+
+### Context
+`scripts/check_invariants.py` (committed 9bb1a37) runs post-cron data-integrity
+assertions and exits non-zero on failure with row-level detail. Currently
+runs manually only — nothing consumes its output. Three invariants caught
+real bugs on 2026-04-07 retroactively:
+- Ghost cluster re-scoring leak
+- `create_event` orphaned cluster siblings
+- Status/event_id drift
+
+The invariant check should be wired into the cron chain and should notify
+Mike on any failure. Discourse is the short-term destination until Goblin
+Ops lands.
+
+### Why this is a separate line item
+Mike's note (2026-04-08): setting up a new Discourse bot user takes real
+time — create user, create private category, create API key with scoped
+permissions, add env vars to `.env.prod`, store credentials in
+`forum-management/.env`. This is ~30 min of clicky work on the forum side
+plus code changes. Not doing it ad-hoc; wants to batch it.
+
+### Setup checklist (forum side)
+- [ ] Decide: **reuse Goblin News bot user** (already exists, used by
+      discuss feature) OR **create a new `goblin-ops` user** for clean
+      separation between user-facing forum activity and admin alerts.
+      Recommendation: separate user. Makes it easier to mute one without
+      the other and avoids alert spam in the main bot's DM thread.
+- [ ] If separate user: create account `goblin-ops@promptgoblins.ai`,
+      username `goblin-ops`, trust level 4 (leader) or admin.
+- [ ] Create a private Discourse category `ops-alerts`, visible only to
+      admins. All invariant failures post here as new topics; Mike gets
+      notifications via normal Discourse mechanisms (email, web, mobile).
+- [ ] Generate a scoped API key for the bot user with minimum permissions:
+      create topic in `ops-alerts` category only. Store in
+      `forum-management/.env` + server `.env.prod` as `DISCOURSE_OPS_API_KEY`
+      and `DISCOURSE_OPS_USERNAME`.
+- [ ] Decide posting behavior: new topic per failure, or daily digest
+      topic that gets new posts appended. Recommendation: new topic per
+      failure for visibility; dedup via a "last-alert hash" check so we
+      don't spam the same failure twice in 24h.
+
+### Setup checklist (code side)
+- [ ] Add `DISCOURSE_OPS_API_KEY` / `DISCOURSE_OPS_USERNAME` /
+      `DISCOURSE_OPS_CATEGORY_ID` to `ai_signal/config.py` settings.
+- [ ] Add a `post_to_ops_category()` helper in a new
+      `src/ai_signal/alerting.py` module. Should take title + body,
+      POST to Discourse, return topic URL or None on failure.
+- [ ] Modify `scripts/check_invariants.py`: on any failure, after
+      printing to stdout, call `post_to_ops_category()` with a formatted
+      body listing the failing invariants and sample rows. Wrap in
+      try/except — failing to alert should NOT change the script's
+      exit code or block the cron.
+- [ ] Add dedup: write the last-alert hash to a small file
+      (`/tmp/goblin-ops-last-alert.txt` or a DB row) and skip posting if
+      the same hash was posted in the last 24h.
+- [ ] Append `; python -m scripts.check_invariants` to the news
+      pipeline cron line in `deploy/cron/pipeline-cron` so the check
+      runs after every pipeline run. Use `;` not `&&` — the check
+      should run even if the orchestrator failed, because that's
+      exactly when we most want to see the DB state.
+
+### When to do this
+Bank until Mike has 30 min of forum-setup time available. Low urgency
+given the invariant check is a regression-catcher, not a blast radius
+multiplier — the worst case today is "one of the fixed bugs silently
+comes back and goes unnoticed for 24–48h instead of being alerted."
+
+### Migration path to Goblin Ops
+When Goblin Ops ships, swap `post_to_ops_category()` for
+`goblin_ops.post_alert()` (webhook or SDK call). The dedup logic,
+invariant check itself, and cron integration stay the same — only the
+transport changes.
