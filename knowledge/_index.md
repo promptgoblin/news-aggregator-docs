@@ -66,3 +66,4 @@ USAGE: grep/search for your keyword → load specific referenced file(s)
 
 ---
 **Token Savings**: Reading this index = ~350 tokens. Full old version = 1,630 tokens. Load specific files only.
+- [gotcha_sitemap_lastmod_not_novelty](gotcha_sitemap_lastmod_not_novelty.md) — sitemap lastmod is not "new"; novelty = URL not yet seen; explicit first-poll bootstrap (2026-09-22)
