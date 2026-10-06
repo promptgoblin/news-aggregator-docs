@@ -34,7 +34,9 @@ product definition) is the backstop for any wrong drop.
    - events gaining ≥ 6 updates in a month: baseline 11 → target ≤ 4
    - frontier-lab posts filed as updates to events > 3 d old: baseline 10% → target < 3%
    - launches fragmented into > 1 event (manual check on the week's model releases): baseline GPT-6.1 Sol = 3
-   - the known-misfile replay (GPT-6.1 Sol, Mods) must stay "drop" after any question/threshold/Jev change.
+   - regression replay after any question/threshold/Jev change: GPT-6.1 Sol → price-war saga and Mods → Sonnet 5.5
+     must stay **drop**; GPT-6 Astra "for work" (Sep 9) → the Sep 3 Astra launch must stay **keep** (p 0.91 on
+     2026-10-05) — Mike, 2026-10-06: the same model reaching a new product a few days later is an update, not a new story.
 
 ## What to watch for (signs it is hurting)
 
