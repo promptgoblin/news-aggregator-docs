@@ -108,6 +108,10 @@ If your call satisfies all of these:
 
 …you should be passing `tools=[]` and `thinking={"type": "disabled"}` minimum. Without them, you're paying for context the model never benefits from.
 
+## Exception: agents with subagents need `tools=["Agent"]` (2026-10-08)
+
+`tools=[]` strips the built-in **subagent tool** too, on Claude Code newer than 2.1.139 (older CLIs kept it). An orchestrator that passes `agents=` with `tools=[]` then cannot reach any subagent. It fails soft: the agent says "the subagents aren't available", holds its clusters and creates nothing. List the subagent tool alone, `tools=["Agent"]` (the CLI still accepts the old name "Task"). Verified in the prod container: `tools=[]` exposes no built-ins; `["Agent"]` exposes only that tool, and the scorer subagent ran. Found by the canary the day we stopped running the SDK's bundled 2.1.139. The canary's `EMPTY` verdict is what catches this; a tools-only smoke test does not.
+
 ## When the SDK defaults ARE the right choice
 
 This is not an argument against the SDK. The defaults are right when:
