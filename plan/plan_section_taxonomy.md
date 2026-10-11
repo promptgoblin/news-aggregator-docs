@@ -8,6 +8,11 @@ last_updated: 2025-02-25
 
 **Parent**: [plan/PLAN.md](PLAN.md)
 
+> **2026-10-11 — restored.** The "fixed taxonomy, LLM-assigned, no tag creation" rule below drifted in production
+> (create_event auto-registered proposals → 6,954 free-text tags, 4,488 used once). The vocabulary now lives in
+> `app/src/ai_signal/taxonomy.py` (43 themes + an entity registry with aliases, roles per event in `event_tags`, a proposal
+> queue instead of creation). The group table below is the 2025 original; the live list is the code.
+
 ## Overview
 
 Tag taxonomy and scoring system for Goblin News events. Tags enable filtering and discovery. Importance scores drive feed ordering and quality thresholds. The taxonomy is LLM-assigned from a fixed list — the auto-tagger cannot create new tags (same principle as the Prompt Goblins forum).
