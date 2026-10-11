@@ -110,7 +110,15 @@ If your call satisfies all of these:
 
 ## Exception: agents with subagents need `tools=["Agent"]` (2026-10-08)
 
-`tools=[]` strips the built-in **subagent tool** too, on Claude Code newer than 2.1.139 (older CLIs kept it). An orchestrator that passes `agents=` with `tools=[]` then cannot reach any subagent. It fails soft: the agent says "the subagents aren't available", holds its clusters and creates nothing. List the subagent tool alone, `tools=["Agent"]` (the CLI still accepts the old name "Task"). Verified in the prod container: `tools=[]` exposes no built-ins; `["Agent"]` exposes only that tool, and the scorer subagent ran. Found by the canary the day we stopped running the SDK's bundled 2.1.139. The canary's `EMPTY` verdict is what catches this; a tools-only smoke test does not.
+`tools=[]` strips the built-in **subagent tool** too, on every CLI we tested, including 2.1.139. An orchestrator that passes `agents=` with `tools=[]` then cannot reach any subagent. How it fails depends on the model:
+- **Sonnet 5.5 on a new CLI fails visibly.** It says "the subagents aren't available", holds its clusters and creates nothing.
+- **Sonnet 4.6 on 2.1.139 failed silently.** It role-played the subagents ("Let me score them from summaries as the SCORER subagent:") and did all the work itself, never seeing the SCORER/DISTILLER/TAGGER/QC prompts.
+
+Goblin News ran this way from 12b53d4 (2026-06-05, which set `tools=[]`) until 093b6ba (2026-10-08). Re-verified 2026-10-11 by running both CLIs side by side:
+- 2.1.139 + `tools=[]`: no subagent tool; Sonnet wrote fake calls as text.
+- 2.1.139 + `["Task"]`: the subagent ran.
+
+So the scoring, distilling, tagging and QC behavior from June to October came from the main runbook alone. Score-distribution and per-event cost baselines from that period are a single-agent pipeline, not the designed one. List the subagent tool alone, `tools=["Agent"]` (the CLI still accepts the old name "Task"). Verified in the prod container: `tools=[]` exposes no built-ins; `["Agent"]` exposes only that tool, and the scorer subagent ran. Found by the canary the day we stopped running the SDK's bundled 2.1.139. The canary's `EMPTY` verdict is what catches this; a tools-only smoke test does not.
 
 ## When the SDK defaults ARE the right choice
 
