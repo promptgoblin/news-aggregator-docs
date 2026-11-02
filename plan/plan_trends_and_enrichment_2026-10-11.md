@@ -62,3 +62,62 @@ subscription-backed SDK run, as the tag backfill is doing).
 ## Definition of done for the pickup agent
 - Steps 0-4 built with tests; backtest report in `docs/outbox`-style markdown showing the three known arcs; no public
   surface until Mike signs the 3-week review; scorer hook stays off by default.
+
+## Implementation notes (2026-11-02) — step 1, enrichment layer
+
+Built on app branch `feat/trend-enrichment` (from main 184e57d). Step 0 (scorer labels) already lives in
+`events.scoring` since app commit 0d4f8a5 and is NOT duplicated; the enrichment fallbacks read `story_class` from it.
+
+**Code:** `src/ai_signal/enrichment.py` (enums, validation, fallbacks, source_stats / buzz arithmetic, async
+upsert helpers), `src/ai_signal/models/enrichment.py` (`EventEnrichment`, `EventNumber`), migration
+`alembic/versions/b32_event_enrichment.py` (revises b31), `agent/runbooks.py` `ENRICHMENT_SPEC` (part 4 of the
+TAGGER prompt, shared with the backfill), `agent/tools.py` `_apply_enrichment` (create_event / update_event),
+`pipeline/dedup.py` `reassign_event_children` (survivor source_stats), `pipeline/sentiment.py` (buzz upsert),
+`scripts/backfill_enrichment.py`, `tests/test_enrichment.py`.
+
+**Tables**
+| table | columns |
+|---|---|
+| `event_enrichment` (PK `event_id` FK events CASCADE) | `arc_role` text, `action` text, `is_prospective` bool, `claim_basis` text, `jurisdictions` text[], `source_stats` jsonb, `buzz` jsonb, `enrichment_version` int NOT NULL, `enriched_at` timestamptz, `enrich_model` text |
+| `event_numbers` (id serial) | `event_id` FK events CASCADE, `kind` text, `value` numeric, `unit` text, `currency` char(3), `as_of` date, `entity_slug` text, `is_prospective` bool, `claim_basis` text, `key_fact_idx` int; index (entity_slug, kind, as_of) |
+
+`source_stats` = `{distinct_sources, distinct_domains, types: {primary, publication, newsletter, aggregator, blog},
+has_primary}` (types count DISTINCT sources; `social` folds into aggregator; aggregator = `sources.source_type =
+'aggregator'` or the legacy names TechMeme / Google News * / Hacker News * / Reddit *; domain = registrable domain of
+`source_metadata.original_url` > `resolved_url` > `url`, hosted platforms such as substack.com keep the author label).
+`buzz` = `{reactions, stance_pos, stance_neg, stance_mixed, stance_other, notable_voices, sentiment_score, passes,
+pass2_shift, latest_pass_at}` from the LATEST pass in `events.sentiment_passes`; NULL until a pass exists.
+
+**Enums (code, `ai_signal.enrichment`)** — arc_role: new | development | reaction | satellite | retrospective.
+action: launch_model | launch_product | open_weights | raise | acquire | partner | compute_deal | earnings_metric | sue |
+rule | sign_law | propose_law | regulator_action | hire_depart | incident | research_result | deploy_adopt | statement.
+claim_basis: self_reported | third_party_data | independent_verification | official_record. number kinds: arr | revenue |
+valuation | raise | acquisition_price | users | tokens_per_day | compute | parameters | benchmark | price | headcount |
+context_window | downloads | market_cap | capex | contract_value | fine | share_percent | count | other. jurisdictions:
+`^[A-Z]{2}(-[A-Z0-9]{1,3})?$` (US, US-CA, EU, CN), max 6. Off-list values are dropped and logged to `pipeline_logs`
+(stage `enrichment`, decision `reject`); the event is never failed.
+
+**Version:** `agent/config.py` `ENRICHMENT_VERSION = 1`. Bump when enums, the prompt block or the arithmetic change
+meaning; never chart across versions without re-running the backfill over the old range.
+
+**Fallbacks** (when Haiku omits a field): arc_role = `satellite` if `events.scoring.story_class == 'satellite'`,
+else `development` when the cluster was attached to an existing event (update_event path, or create_event with
+`related_event_id` / `match_confidence` in an article's source_metadata), else `new`; is_prospective =
+`story_class == 'prospective'`. A row written without any Haiku answer keeps `enriched_at` NULL so the backfill
+revisits it. Re-enrichment on updates: the EI runbook tells the orchestrator to re-run the TAGGER and pass
+`enrichment` to update_event only on material updates (the ones recorded with a `summary_fact`); update_event always
+recomputes source_stats.
+
+**Backfill** (do not run from dev01; the agent container holds the credentials and shares the 5-hour quota with the
+cron runs):
+```
+docker exec -u pipeline ai-signal-agent bash -c 'cd /app && PYTHONPATH=/app:/app/src \
+  python -m scripts.backfill_enrichment --arithmetic-only'               # free: source_stats + buzz for all active events
+docker exec -u pipeline ai-signal-agent bash -c 'cd /app && PYTHONPATH=/app:/app/src \
+  python -m scripts.backfill_enrichment --dry-run --limit 8'             # plan + one sample payload, writes nothing
+docker exec -u pipeline ai-signal-agent bash -c 'cd /app && PYTHONPATH=/app:/app/src \
+  python -m scripts.backfill_enrichment --limit 500 --batch 4 --sleep 2'  # one nightly chunk, oldest first
+```
+Flags: `--limit`, `--since YYYY-MM-DD`, `--batch` (events per Haiku call), `--sleep`, `--max-cost`, `--model`,
+`--dry-run`, `--arithmetic-only`. Resumable by construction (selects `enriched_at IS NULL`). Prints running SDK cost
+and $/event. Not yet run as of 2026-11-02.
