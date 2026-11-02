@@ -121,3 +121,56 @@ docker exec -u pipeline ai-signal-agent bash -c 'cd /app && PYTHONPATH=/app:/app
 Flags: `--limit`, `--since YYYY-MM-DD`, `--batch` (events per Haiku call), `--sleep`, `--max-cost`, `--model`,
 `--dry-run`, `--arithmetic-only`. Resumable by construction (selects `enriched_at IS NULL`). Prints running SDK cost
 and $/event. Not yet run as of 2026-11-02.
+
+## Implementation notes (2026-11-02) — steps 2-4, aggregation + momentum + backtest
+
+Built on app branch `feat/trend-index` (worktree off main 184e57d). Not deployed, no migration run, no cron installed.
+
+**Module layout** (`src/ai_signal/trends/`, pure compute, no DB):
+- `constants.py` — every weight/window, `CALC_VERSION = 1`. Bump it when any value or formula changes, then
+  `--rebuild-all`.
+- `mass.py` — `EventRec`/`ArticleRef`/`EnrichmentRec`/`KeyRef`; w(e,k) = role × imp × nov × hype × buzz / √fanout;
+  activity weights; the per-source cap (`source_cap_factors`: one source ≤ max(40%, 1/n) of the key's trailing-7d mass,
+  single-source windows uncapped — the domain gate already blocks them).
+- `series.py` — EWMA (half-life 4d), baseline (d-90…d-15; pre-series days are not data, pre-key days are zero),
+  prior (0.5 events/week at imp 1.0 over the 28d mean daily total), momentum, Poisson burst z, NEW flag.
+- `gate.py` — §2c gate; returns trending/hype/failure reasons + window stats (stored in `trend_daily.flags`).
+- `compute.py` — `compute_trends(TrendInput, start, end)` → `trend_daily` rows, day totals, activity rows, full
+  per-key series. `keys_from_tags` (role theme → theme key; subject|mentioned → entity key), `add_jurisdiction_keys`
+  (from enrichment), `storyline_keys_hook` (hook only — storylines not built).
+- `loaders.py` — `build_input(events, event_tags, tags, articles, sources, event_updates, event_merges, enrichment)`
+  from plain row dicts: the DB job and the CSV backtest share it.
+- `ranking.py` — `current_ranking(db, key_type, …)` replaces the planned `mv_trend_current` view; `record_snapshot`.
+- Models `src/ai_signal/models/trend.py`; migration `alembic/versions/b33_trend_tables.py` (revises
+  `b32_event_enrichment`): `event_activity`, `trend_daily`, `trend_day_totals`, `trend_snapshots`.
+
+**Deliberate choices beyond the research text:** momentum is computed for NEW keys too (the prior makes it finite) and
+stored; `flags.new` tells consumers to show "NEW" instead of "×N" — without this the Jev test ("NEW by Sep 16 AND top-5
+by momentum in the Sep 14 week") is self-contradictory. `flags.warmup` marks days whose baseline window has < 30
+in-series days (the first ~45 days of history); tests ignore them. Merged-away events are excluded throughout; a merge
+is activity on the survivor on `merged_at`. Activity mass carries the role weight (mentioned 0.25) but no fanout.
+Missing enrichment ⇒ nov = hype = buzz = 1.0, except `scoring.story_class` satellite → 0.4 and prospective → 0.6.
+
+**Run:**
+```
+python -m scripts.trend_nightly                   # trailing 30 days, idempotent (delete+insert the window)
+python -m scripts.trend_nightly --rebuild-all     # after a CALC_VERSION bump
+python -m scripts.backtest_trends --export-dir resources/trend_backtest_export_<date>/   # or --db
+```
+The backtest writes `outbox/trend_backtest_<date>.md` with the §2e table and weekly top-10 movers.
+
+**Proposed cron line** (deploy/cron/pipeline-cron, NOT installed — Mike's call after the migration):
+```
+30 23 * * * pipeline cd /app && PYTHONPATH=/app:/app/src /usr/local/bin/python -m scripts.trend_nightly >> /var/log/pipeline/trends.log 2>&1
+```
+
+**Backtest 2026-11-02 (no enrichment rows → all verdicts provisional):** Jev PASS (NEW Sep 15; TypeSafe #5 in the
+Sep 14 week, #2 in the Sep 28 week; 15 co-mention edges). Duplicate injection PASS (Δmomentum 0.06 < ln 1.5).
+Rogue-agent FAIL at theme level: `safety-incidents` runs ~10 events/week all August, so the week of Aug 31 is ×1.95
+(z 2.0), just under the gate; it trends 6 days in the Sep 28 week; two false days Jul 30-31. The 4-event regex wave is
+a sub-theme the closed vocabulary cannot see. California not evaluable (no `US-CA`); proxy `regulation-us` peaks ×2.4
+(z 8.2) on Sep 20 and is back under ×1.5 by Oct 13. Agents control FAIL: share 10.9% (Apr) → 14.8% (Oct), +36% (raw
+count ×3.5) — the Aug–Sep source expansion changed the topic mix (§7 "the corpus is the instrument"). Flat keys: Microsoft
+and enterprise-adoption 0 burst days; Nvidia one 11-day episode around Aug 26 earnings (the literal ≤2 days/month rule
+cannot hold with a 7-day-window z). Stability FAIL on momentum (Spearman 0.54, set overlap 79%) but 0.93 on heat and 0.81
+for themes — rank the public page by heat (or weekly mean momentum) and use momentum for the gate.
