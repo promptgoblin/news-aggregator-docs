@@ -13,6 +13,16 @@
 
 ## Recent Changes
 
+### 2026-11-11 — Releases and Guides shipped; site is News | Releases | Guides
+
+- **Releases tab live** (app 5f616d5, migration b35): pipeline `ai_signal.releases` (poll through load.party → Jev noise gate → editor groups and scores → writer + blind QC → Grok reactions T+3/T+7 → news register → weekly digest → alerts), API `api/releases.py`, pages `/releases`, `/release/[slug]`, `/releases/[product]`, `/releases/digest/[slug]`, RSS, sitemap child. Claude Code is the only `is_live` product; the other 8 are polled but dark. Cron 05:10 UTC daily, gated by `RELEASES_ENABLED`. Details: `features/capability_tracker.md`.
+- **Guides moved into the site**: the three certification guides are markdown in `frontend/content/guides/`, served at `/guides/<slug>` with PDFs; all were re-verified and bumped (CCA-F v1.5, Builder Track v1.2, Associate v1.2). `promptgoblins.ai/library/...` pages and PDFs 301 to the new URLs.
+- Decisions at launch: `WRITE_MIN` 6 (prod scored 98 of 315 changes at 6+), docs-only changes capped at 5, 90-day entry window, digest DM off until reviewed.
+
+### 2026-10-11 — Capability Tracker planned
+
+- **New content type planned: capability changes** ("Releases" tab). Vetting backtest 2026-09-26 (Jev over all 6,424 Claude Code changelog lines: known features 0.86–0.95, bug fixes 0.11; Grok reaction probes; three Sonnet example entries) said build. Key finding: `/security-review` was never announced in the changelog → vendor docs are diffed as a second source. Plan: `plan/plan_capability_tracker_2026-10-11.md`; feature: `features/capability_tracker.md`. Phases: spike → backend (b30) → frontend content-type refactor → reactions/ops → backfill. Waiting on Mike's go.
+
 ### 2026-09-11 — Scorer follow-through, quota back-off, landing tagline
 
 - **Scorer v3 tightening + anchor cutoff** (app 5a318c8, deployed 06:55 UTC): the first live days ran 8+ at 21→32% because the week-anchor block was 52 old-prompt 8s vs 6 new — anchors now never predate `RECENT_TOP_SINCE` (bump it whenever the scale is redefined); loans/rounds are 7 regardless of size, papers/experiments are 7 however striking, a milestone claim is a 7, executive statements/predictions/interviews are insight pieces never 8. Four gate-failing 9s (an AGI-roadmap statement, Mistral's round, a Navier-Stokes proof claim, an April sandbox incident) lowered with provenance.

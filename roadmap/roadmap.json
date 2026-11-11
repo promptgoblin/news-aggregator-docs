@@ -544,10 +544,10 @@
     },
     {
       "id": "capability-tracker",
-      "title": "Capability and release tracker",
+      "title": "Releases tab and Guides",
       "track": "trackers",
-      "stage": "building",
-      "one_liner": "A Releases tab: what AI coding tools and models can do now, change by change.",
+      "stage": "shipped",
+      "one_liner": "Releases: what AI coding tools and models can do now, change by change. Guides moved into the site.",
       "depends_on": [
         "load-party-fetcher",
         "jev-dedup-related",
@@ -565,14 +565,15 @@
         ],
         "reasoning": "A backtest over the full Claude Code changelog showed the gate separates real features from fixes. It reuses the feed, reader and RSS machinery, so it is one product with two tabs rather than a second site.",
         "open_questions": [
-          "Which stage the build has reached; the feature doc still says planning, while the app repo has releases branches."
+          "When to switch on the products beyond Claude Code (polled, not yet shown).",
+          "Whether families of small API changes should be folded into one change."
         ]
       },
       "docs": [
         "features/capability_tracker.md",
         "plan/plan_capability_tracker_2026-10-11.md"
       ],
-      "status_note": "In progress in another session; app repo has feat/releases branches, docs still say planning."
+      "status_note": "Deployed 2026-11-11. Claude Code live; eight other products polled and dark. Certification guides now at /guides."
     },
     {
       "id": "email-provider-signup",
