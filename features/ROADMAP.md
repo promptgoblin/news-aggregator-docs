@@ -35,6 +35,8 @@
 
 **Newsletter note (2026-11-11, Mike):** the daily podcast is to be complemented by a **daily and a weekly Goblin News newsletter**: one brief quick read, the same for every subscriber, plain email signup, combining news, a trends section and our other content (podcast, guides, forum). It is in addition to the trends pages and the per-user digest. Detail at the top of [email_digest.md](email_digest.md).
 
+**X account note (2026-11-11, Mike):** run an **automated Goblin News account on X** people can follow to keep up: a very short daily summary of what everyone needs to know, plus a weekly recap. Content comes from the same daily and weekly editions as the newsletter and podcast, so it is close to free to produce. It should build visibility over time, and it gives paid promotion something to point at (ads that ask people to follow). Each post links back to the day's edition page. Verify X API posting limits and cost before building.
+
 **Sequencing note (2026-07-08):** Audio and Storylines are the two high-leverage plays; the Email Digest shares infra with both (scheduled job + `llm_client.py` + tz). Storylines is the engine that also powers catch-me-up / semantic-ask / topic-emails / social — highest leverage per build. User-facing generation (storylines, email intros, catch-up) runs on **DeepSeek via `llm_client.py`**, NOT the Claude subscription (the sub can't serve per-user features). Discord/Slack push bot = **parked** until requested (push model = per-subscriber webhook registry + retries = ongoing surface area, unlike pull-based RSS/podcast).
 
 ---

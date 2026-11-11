@@ -142,6 +142,32 @@ the same under count, linear and exponential weights, and use effective sample s
 - **Per-key-type gate tuning** (the jurisdiction burst-gate question). Jurisdictions become a filter and
   a storyline ledger column. Closed.
 
+## 4F. Signal inventory (added 2026-11-11, Mike: "the best possible trend data we can squeeze from our data")
+
+Today the index uses event count, importance, arc role, claim basis and update activity. Signals we hold but do
+not use yet, ranked by expected value. All are arithmetic over data already stored unless marked.
+
+| # | Signal | What it says | Source in our data |
+|---|---|---|---|
+| 1 | **Coverage by source class** | Mainstream pickup is the strongest confirmation; community-only is the early signal. Classes: mainstream press (NYT, WSJ, Bloomberg, Reuters, FT, BBC, CNBC, Guardian), tech press (TechCrunch, Verge, Wired, Ars), first-party (lab and company blogs), specialist (newsletters, analyst blogs), community (Hacker News, Reddit, X), research (arXiv, GitHub, Hugging Face). Classified per ARTICLE DOMAIN, not per feed, because aggregator feeds link everywhere (1,140 linked domains in 60 days; the top 45 carry most volume). | `articles.resolved_url` domain + a small domain-class table; where it was found from `articles.source_id` |
+| 2 | **Crossover** | A story or storyline moving community -> specialist -> tech press -> mainstream, with the lag in days. "Reached mainstream" is a labelled moment; "community only for N days" is the early list. | class of each article + `published_at` |
+| 3 | **Curator votes** | How many independent newsletters and aggregators chose the story. These are human editors voting; N of our curated feeds picking one story is a strong, cheap prominence signal. | articles from newsletter and aggregator sources per event |
+| 4 | **Legs** | Coverage still arriving days after first sight (span and count of late articles), separate from spike size. | `articles.published_at` per event |
+| 5 | **Follow-up pull** | Events that many later events cite as predecessor: the stories other stories are built on. | `event_related_picks` (793 predecessor, 53 follow-up edges) |
+| 6 | **Mentioned-to-subject** | An entity that shows up as a mention in other people's stories and then becomes the subject of its own: the classic shape of something emerging. | `event_tags.role` over time |
+| 7 | **Below-the-bar chatter** | Entities and topics recurring in clusters that scored too low to publish (545 such articles in 30 days). Not news yet, but a leading indicator for what clears the bar next. Needs entity tagging of skipped clusters (a cheap Haiku pass) — the only item here with a model cost. | `articles.processing_status = skipped_low_score` |
+| 8 | **Reaction ratio** | Reactions and developments per seed event: a story generating consequences vs one that landed and died. | `event_enrichment.arc_role` + storylines |
+| 9 | **Breadth widening** | An entity appearing under new themes, categories or jurisdictions for the first time (already in the firsts ledger; promote to a signal). | `event_tags`, `event_enrichment.jurisdictions` |
+| 10 | **Number escalation** | Funding, valuation, compute or user numbers rising across a storyline. | `event_numbers` (after the range fix) |
+| 11 | **Notable-voice attention** | Named practitioners weighing in, and stance mix, for score 8+ events. | sentiment passes |
+| 12 | **Reader attention** | What our own readers open, follow and discuss. Weak today (a handful of human visits a day), becomes real with the newsletter and podcast. | Umami, forum, later email clicks |
+
+Design rules for 1-3: coverage is shown as a fact ("covered by 9 outlets, 4 mainstream") and used with log
+damping; aggregators and syndicated copies count once; a mainstream outlet is worth more than a community post in
+confirmation weight, while the EARLY list is ranked by community and specialist attention with no mainstream yet.
+Outside our data (later, each needs a fetch path): GitHub stars, Hugging Face downloads, OpenRouter token share,
+search interest.
+
 ## 5. Cost
 
 | Item | Basis | Cost |
