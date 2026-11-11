@@ -15,19 +15,23 @@ author: mike + Claude (co-founder session)
 >
 > **Non-negotiable design principle:** this feature *re-renders an existing asset* (the distilled, scored event) into an email. It is the **text sibling of the audio briefing** (`features/audio_briefing.md`) and shares its infrastructure — scheduled job, advisory-lock pattern, `llm_client.py`, timezone handling, `_build_event_query`. If you find yourself re-distilling, re-scoring, or building a second event query, stop — reuse the pipeline's existing outputs and the existing per-user filter machinery.
 
-> **ADDED 2026-11-11 (Mike): editorial newsletters that complement the daily podcast.** Do not forget.
-> Alongside the per-user filtered digest specced below, ship two **editorial editions, the same for every subscriber**:
-> - **Daily newsletter** = the text companion of the daily podcast (`features/audio_briefing.md`): same selection and
->   order as that day's episode, each item with its one-line "why it matters" and a link, plus the listen link. One
->   editorial pass produces both the script and the email, so the two never disagree.
-> - **Weekly newsletter** = the Trends v2 "what changed this week" post (`plan/plan_trends_v2_2026-11-11.md` §4C):
->   five to eight claims, each with one number and the events behind it, linking to storyline pages and to the weekly
->   recap episode.
-> Why editorial editions matter beyond the personalised digest: they need **no account and no saved filters** (plain
-> email signup), so they are the thing a search or social visitor can subscribe to, and they are the first audience we
-> own. Each edition is also published as a web page with its own URL, title, canonical and sitemap entry (global SEO
-> rule), so the archive is indexable. Sequencing: weekly first (its content exists once the Trends v2 DM trial passes),
-> daily when the podcast's daily pipeline is live. Shares the ESP, unsubscribe and send-log work in this spec.
+> **ADDED 2026-11-11 (Mike): the Goblin News newsletter, daily and weekly, to complement the daily podcast.** Do not forget.
+> This is its own product, in addition to the trends pages and the per-user filtered digest specced below. It is one
+> **brief, quick read to keep up**, the same edition for every subscriber, that pulls together everything we make:
+> - **News**: the day's (or week's) top events, each with its one-line "why it matters" and a link.
+> - **Trends**: the notable items from Trends v2 (`plan/plan_trends_v2_2026-11-11.md`): what is new, what is
+>   building, a number that moved, a storyline that advanced. Trends are one section here; the full trends post and
+>   storyline pages stay on the site.
+> - **Other content we create**: the podcast episode (listen link), guides, forum discussions worth reading, and
+>   whatever we add later.
+> **Daily** pairs with the daily podcast (`features/audio_briefing.md`): same selection and order as that day's
+> episode, so the script and the email never disagree. **Weekly** is the catch-up edition: the week's top news, the
+> trends section, and the week's other content.
+> Why it matters: it needs **no account and no saved filters** (plain email signup), so it is the thing a search or
+> social visitor can subscribe to, and the first audience we own. Each edition is also a web page with its own URL,
+> title, canonical and sitemap entry (global SEO rule), so the archive is indexable. Keep it short: the research behind
+> Trends v2 found readers want brevity plus "why it matters" (the largest AI newsletters promise five minutes).
+> Shares the ESP, unsubscribe and send-log work in this spec.
 
 ---
 

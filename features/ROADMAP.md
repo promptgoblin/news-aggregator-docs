@@ -33,6 +33,8 @@
 | 12 | **Email Digest** (daily/weekly, per-user filters) | C2 | [email_digest.md](email_digest.md) | Planning (spec'd 2026-07) |
 | 13 | **Capability Tracker** (Releases tab: coding-tool + model changes, docs diff, In-practice) | C3 | [capability_tracker.md](capability_tracker.md) | Planning (plan 2026-10-11) — vetted with a Jev backtest 2026-09-26 |
 
+**Newsletter note (2026-11-11, Mike):** the daily podcast is to be complemented by a **daily and a weekly Goblin News newsletter**: one brief quick read, the same for every subscriber, plain email signup, combining news, a trends section and our other content (podcast, guides, forum). It is in addition to the trends pages and the per-user digest. Detail at the top of [email_digest.md](email_digest.md).
+
 **Sequencing note (2026-07-08):** Audio and Storylines are the two high-leverage plays; the Email Digest shares infra with both (scheduled job + `llm_client.py` + tz). Storylines is the engine that also powers catch-me-up / semantic-ask / topic-emails / social — highest leverage per build. User-facing generation (storylines, email intros, catch-up) runs on **DeepSeek via `llm_client.py`**, NOT the Claude subscription (the sub can't serve per-user features). Discord/Slack push bot = **parked** until requested (push model = per-subscriber webhook registry + retries = ongoing surface area, unlike pull-based RSS/podcast).
 
 ---
