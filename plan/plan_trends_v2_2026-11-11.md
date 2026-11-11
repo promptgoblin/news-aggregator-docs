@@ -111,6 +111,22 @@ empty sections are allowed. Sections, in order of distinctiveness:
 It goes to Mike as a weekly DM for three weeks first. That is the editorial-precision test the original
 plan already required (7 of 10 judged right) and it is the ship gate for a public page.
 
+### C2. Insights that need no model at all (arithmetic over the annotations)
+
+From the methods research, section 4A. All use tools built for single-digit counts, and all can ship
+with the lists in A before storylines exist:
+
+| Insight | How | Why it suits us |
+|---|---|---|
+| Emerging pairs | new or strengthening entity-theme pairs, scored against the marginals | a slow arc invisible in the entity series and the theme series can be obvious in the pair; informative at 2 events from 2+ sources |
+| Firsts ledger | first appearance of an entity, theme pairing, jurisdiction or number kind, plus whether others followed (novelty minus transience) | separates "new and everyone followed" from "new and forgotten" |
+| Sustained attention | weeks present out of the last 8 at score 7+, run length, update depth | finds the living arcs the burst test cannot |
+| Composition shifts | 28 days vs prior 90 by theme, claim basis, arc role, score band (Jensen-Shannon, ranked by contribution) | pools all events, so it works on a few hundred |
+| Mix ratios | verified vs self-reported, actor vs acted-upon, per entity and theme (shrunk log-odds) | uses fields no other news product has |
+
+Score-weighted share is sound as "share of what mattered" on two conditions: trust only keys that rank
+the same under count, linear and exponential weights, and use effective sample size for the floor.
+
 ### D. Small statistical changes worth making (internal signals)
 
 - 28-day cumulative test on weekly bins for the Building list, baseline taken from before the window.
@@ -142,7 +158,8 @@ whether it or Haiku judges.
 
 1. Known-arc test set and gold pairs (drafted from the data by a strong model; Mike spot-checks if he wants).
 2. Storyline membership plus backfill; evaluate against 1. Stop here if arcs are not recovered.
-3. Lists (A) and ledger pages on an internal admin page; statistics changes (D).
+3. Lists (A), the arithmetic insights (C2) and ledger pages on an internal admin page; statistics changes (D).
+   C2 does not depend on storylines and can start in parallel with step 1.
 4. Briefing sections C1-C5 with the validator; weekly DM to Mike for three weeks.
 5. Public surface only after the DM passes 7 of 10.
 
