@@ -238,7 +238,13 @@ def main(argv=None) -> int:
         print(f"roadmap: valid ({len(data['items'])} items: {summary})")
         return 0
 
-    html = render(data, (HERE / "template.html").read_text(encoding="utf-8"))
+    # template.html is a page FRAGMENT (title, style, markup, script; no html/head/body), which is the
+    # form a hosted page publisher expects. The local file wraps it in a minimal document.
+    fragment = render(data, (HERE / "template.html").read_text(encoding="utf-8"))
+    args.out.with_suffix(".fragment.html").write_text(fragment, encoding="utf-8")
+    html = ('<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
+            '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n'
+            '</head>\n<body>\n' + fragment + '\n</body>\n</html>\n')
     args.out.write_text(html, encoding="utf-8")
     print(f"roadmap: wrote {args.out} ({len(data['items'])} items: {summary})")
     if args.copy_to:

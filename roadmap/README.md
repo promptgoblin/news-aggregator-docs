@@ -85,3 +85,10 @@ Required on every item: `id`, `title`, `track`, `stage`, `one_liner`. `story.int
   ("unlocked by this", solid), dims the rest, and on wide screens draws connector lines for that chain.
 - Within Building, Next and Ideas, items that wait on nothing come first, then the rest by dependency depth.
 - `roadmap.html#item-id` opens that item's story.
+
+
+## Page design (2026-11-11 redesign)
+
+`template.html` is a page fragment (title, style, markup, script; no html/head/body tags). The build writes `roadmap.fragment.html` (the form a hosted page publisher expects) and `roadmap.html` (the same fragment wrapped in a minimal document for opening locally).
+
+The page is built on progressive disclosure: at rest it shows only live work as a board whose columns are the order of work (Now, Then, After that), computed from dependency depth, with lines between adjacent columns. Pointing at a card traces its whole chain, including the long-range links hidden at rest. Selecting a card opens its story in a side sheet. Ideas, Shipped and Dropped are folded away below. Keep it that way: do not add per-card chips, badges or counters to the board.
