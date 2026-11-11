@@ -63,3 +63,10 @@ See `docs/_framework/guide_complexity_levels.md` for detailed criteria.
 - `docs/_framework/guide_complexity_levels.md` - C1/C2/C3 criteria
 - `docs/_framework/guide_docs_compliance.md` - How docs stay current
 - `docs/_framework/template_*.md` - Templates for all doc types
+
+## Roadmap discipline
+
+- The visual roadmap at `roadmap/roadmap.html` is generated from `roadmap/roadmap.json`. Never edit the HTML by hand.
+- Update the JSON whenever a feature's stage, dependencies or intent changes (started, shipped, dropped, re-sequenced, new idea), in the same commit as that work's docs.
+- Rebuild with `python3 roadmap/build_roadmap.py --copy-to /home/mike/dev/promptgoblins/outbox` and commit both `roadmap.json` and `roadmap.html`.
+- Sequence and dependencies only, no dates. Stories are plain-language intent, key features and reasoning for the owner, not specs. Rules and schema: `roadmap/README.md`.

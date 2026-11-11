@@ -1,0 +1,884 @@
+{
+  "updated": "2026-11-11",
+  "tracks": [
+    {"id": "core", "name": "Core pipeline and site"},
+    {"id": "trends", "name": "Trends and storylines"},
+    {"id": "audience", "name": "Audience and distribution"},
+    {"id": "trackers", "name": "Trackers"},
+    {"id": "ops", "name": "Ops"}
+  ],
+  "items": [
+    {
+      "id": "core-pipeline",
+      "title": "Core event pipeline",
+      "track": "core",
+      "stage": "shipped",
+      "one_liner": "Ingest feeds and newsletters, cluster articles into events, distil, dedupe and add sentiment.",
+      "depends_on": [],
+      "story": {
+        "intent": "Turn a day of AI coverage from many sources into a short list of events, each with one canonical record, a distilled summary and a signal score. Everything else on the roadmap re-uses this record rather than re-reading the web.",
+        "key_features": [
+          "RSS and newsletter ingestion with redirect-resolved links",
+          "Clustering of articles into events, so one story is one record however many outlets cover it",
+          "Distillation into skim, summary and deep-dive tiers with a 'what this means' note",
+          "Automatic and manual duplicate merging with a provenance trail",
+          "Reaction and sentiment passes for the highest-scoring events"
+        ],
+        "reasoning": "It came first because nothing else has value without a trustworthy event record. The unit of content is the event, not the article.",
+        "open_questions": []
+      },
+      "docs": ["plan/PLAN.md", "plan/plan_section_event_intelligence.md", "features/production_deployment.md", "features/sentiment_reactions.md"],
+      "status_note": "Live in production."
+    },
+    {
+      "id": "forum-signin",
+      "title": "Forum sign-in",
+      "track": "audience",
+      "stage": "shipped",
+      "one_liner": "Readers sign in with their Prompt Goblins forum account; no separate password.",
+      "depends_on": ["core-pipeline"],
+      "story": {
+        "intent": "Give readers an identity on the news site without building accounts, so saved filters, bookmarks and votes have somewhere to live.",
+        "key_features": [
+          "Single sign-on through the forum",
+          "Saved feed filters and preferences per reader"
+        ],
+        "reasoning": "It was the prerequisite for the discuss button, voting and any per-reader feature such as the filtered email digest.",
+        "open_questions": []
+      },
+      "docs": ["features/forum_auth.md"],
+      "status_note": "Live."
+    },
+    {
+      "id": "community-features",
+      "title": "Discuss button, voting and RSS",
+      "track": "audience",
+      "stage": "shipped",
+      "one_liner": "Open a forum thread from any event, vote on events, and follow the feed by RSS.",
+      "depends_on": ["forum-signin"],
+      "story": {
+        "intent": "Connect the news site to the forum in both directions and give power users a way to follow along in their own reader.",
+        "key_features": [
+          "Discuss button that creates or opens the forum topic for an event",
+          "Community voting on events",
+          "RSS feeds of the event stream"
+        ],
+        "reasoning": "Cheap to build once sign-in existed, and it starts the loop between the news site and the forum.",
+        "open_questions": []
+      },
+      "docs": ["features/discourse_integration.md", "features/community_voting.md", "features/rss_feeds.md"],
+      "status_note": "Live."
+    },
+    {
+      "id": "pipeline-alerting",
+      "title": "Pipeline alerts and deploy canary",
+      "track": "ops",
+      "stage": "shipped",
+      "one_liner": "Forum DMs when a run fails, a source goes quiet, costs jump or the sign-in token nears expiry.",
+      "depends_on": ["core-pipeline"],
+      "story": {
+        "intent": "A broken pipeline should page the owner instead of decaying silently. Reliability has to be in place before anything goes out to subscribers on a schedule.",
+        "key_features": [
+          "Alerts for zero-story runs, held clusters, score drift and cost spikes",
+          "Token expiry reminders",
+          "A canary run after every deploy"
+        ],
+        "reasoning": "Past incidents were silent failures found days late. A missing podcast episode or an empty newsletter would be very visible, so this sits underneath every distribution item.",
+        "open_questions": ["features/ROADMAP.md still lists ops notifications as Planning; the alerts exist in the app history. Confirm nothing from that spec is still missing."]
+      },
+      "docs": ["features/ops_notifications.md"],
+      "status_note": "Shipped per app history; the ops_notifications doc has not been updated to say so."
+    },
+    {
+      "id": "umami-analytics",
+      "title": "Site analytics",
+      "track": "ops",
+      "stage": "shipped",
+      "one_liner": "Self-hosted, cookieless page-view analytics for the news site.",
+      "depends_on": ["core-pipeline"],
+      "story": {
+        "intent": "Know how many real people read the site and which pages they land on, without cookies or a third party.",
+        "key_features": [
+          "Self-hosted Umami collecting page views",
+          "Tracker gated by build settings"
+        ],
+        "reasoning": "Every later decision about distribution depends on being able to see traffic. Behaviour events are a separate follow-up.",
+        "open_questions": []
+      },
+      "docs": ["CURRENT_PHASE.md"],
+      "status_note": "Page views live; custom events not built."
+    },
+    {
+      "id": "load-party-fetcher",
+      "title": "load.party article fetcher",
+      "track": "core",
+      "stage": "shipped",
+      "one_liner": "Our own fetch service is the primary way the pipeline retrieves article text.",
+      "depends_on": ["core-pipeline"],
+      "story": {
+        "intent": "Fetch full article text reliably and cheaply through a path we control, instead of paying per request to a scraping vendor.",
+        "key_features": [
+          "Primary fetch path for the pipeline, with the paid scraper kept only for outages",
+          "Health alert when the path degrades"
+        ],
+        "reasoning": "Distillation quality depends on reading the source. The trackers also poll vendor changelogs and docs through the same path.",
+        "open_questions": []
+      },
+      "docs": ["_status.md"],
+      "status_note": "Live as the primary fetcher."
+    },
+    {
+      "id": "scoring-recalibration",
+      "title": "Scoring recalibration",
+      "track": "core",
+      "stage": "shipped",
+      "one_liner": "One scoring rubric with class ceilings, so a 9 is rare and an 8 means something.",
+      "depends_on": ["core-pipeline"],
+      "story": {
+        "intent": "Keep the signal score honest. The score decides what the reader sees first and what the podcast and newsletter will lead with.",
+        "key_features": [
+          "Single rubric with story classes and ceilings",
+          "Inflation and deflation alerts",
+          "A replay tool to test rubric changes against past events"
+        ],
+        "reasoning": "Scores had drifted upward. Any ranked product built on top (daily edition, most covered list) inherits whatever the score gets wrong.",
+        "open_questions": []
+      },
+      "docs": ["_status.md"],
+      "status_note": "Live."
+    },
+    {
+      "id": "tag-vocabulary",
+      "title": "Fixed themes and open entity tags",
+      "track": "core",
+      "stage": "shipped",
+      "one_liner": "Every event carries themes from a fixed list plus named entities with their role in the story.",
+      "depends_on": ["core-pipeline"],
+      "story": {
+        "intent": "Give every event consistent labels so events can be counted, filtered and compared over time.",
+        "key_features": [
+          "A closed list of themes",
+          "An open entity registry with aliases",
+          "A role per tag: theme, subject or mentioned",
+          "Full history tagged"
+        ],
+        "reasoning": "Trends, storylines and filters all count tags. Free-form tags had grown into thousands of near-duplicates that could not be counted.",
+        "open_questions": []
+      },
+      "docs": ["plan/plan_section_taxonomy.md", "_status.md"],
+      "status_note": "Live; history backfilled."
+    },
+    {
+      "id": "jev-dedup-related",
+      "title": "Jev duplicate checks and related stories",
+      "track": "core",
+      "stage": "shipped",
+      "one_liner": "A cheap pairwise judge decides 'same event?' and picks predecessor and follow-up stories.",
+      "depends_on": ["core-pipeline"],
+      "story": {
+        "intent": "Stop the same event appearing twice, and link each event to the stories it follows from.",
+        "key_features": [
+          "Pairwise 'same event?' verdicts with a stronger model for the uncertain middle",
+          "Related-story picks stored as predecessor and follow-up links"
+        ],
+        "reasoning": "The same retrieve-then-judge recipe is what storylines will use for membership, and the related-story links are one of the unused trend signals.",
+        "open_questions": []
+      },
+      "docs": ["plan/plan_jev_shadow_eval_2026-09-17.md", "plan/plan_step6_match_gate_2026-10-05.md"],
+      "status_note": "Live."
+    },
+    {
+      "id": "event-enrichment",
+      "title": "Event enrichment",
+      "track": "trends",
+      "stage": "shipped",
+      "one_liner": "Every event records its arc role, claim basis, jurisdictions and extracted numbers.",
+      "depends_on": ["tag-vocabulary"],
+      "story": {
+        "intent": "Record what kind of thing each event is: a new story or a follow-up, verified or self-reported, where it applies, and which numbers it states. These are facts no other news product keeps.",
+        "key_features": [
+          "Arc role: new, development, reaction or retrospective",
+          "Claim basis: first-party, reporting or rumour",
+          "Jurisdictions",
+          "Extracted numbers such as funding, valuation and user counts",
+          "Applied to every new event, with the full history backfilled"
+        ],
+        "reasoning": "Trends v2 is built on these annotations rather than on raw volume. Every day without them would have been history that could not be recovered.",
+        "open_questions": ["Number ranges are parsed poorly; that needs fixing before the briefing's 'numbers that moved' section relies on them."]
+      },
+      "docs": ["plan/plan_trends_and_enrichment_2026-10-11.md", "plan/plan_trend_enrichment_research_2026-10-11.md"],
+      "status_note": "Live on every event; history backfilled."
+    },
+    {
+      "id": "trend-index-internal",
+      "title": "Internal trend index and nightly job",
+      "track": "trends",
+      "stage": "shipped",
+      "one_liner": "Nightly per-theme and per-entity counts, share and heat, kept forever. Internal only.",
+      "depends_on": ["event-enrichment", "tag-vocabulary"],
+      "story": {
+        "intent": "Keep a daily record of how much attention each theme and entity gets, so later products can ask what changed.",
+        "key_features": [
+          "Nightly aggregation per theme and entity",
+          "Heat and a spike test, used as internal signals",
+          "A backtest against arcs we know happened"
+        ],
+        "reasoning": "The data layer is sound and is kept. The public momentum score built on top of it failed its own tests and was dropped, which is why Trends v2 exists.",
+        "open_questions": []
+      },
+      "docs": ["plan/plan_trends_and_enrichment_2026-10-11.md"],
+      "status_note": "Running nightly; nothing public."
+    },
+    {
+      "id": "theme-history-backfill",
+      "title": "Theme history backfill tooling",
+      "track": "trends",
+      "stage": "shipped",
+      "one_liner": "Tooling to rebuild theme history across past events when the theme list changes.",
+      "depends_on": ["tag-vocabulary"],
+      "story": {
+        "intent": "When a theme is added or redefined, past events can be re-labelled so its history is complete rather than starting on the day it was added.",
+        "key_features": [
+          "Re-run theme tagging over past events",
+          "Rebuild the trend index afterwards"
+        ],
+        "reasoning": "A theme with only a few weeks of history cannot be compared with anything. This keeps the lists and storylines honest as the vocabulary evolves.",
+        "open_questions": []
+      },
+      "docs": ["plan/plan_trends_and_enrichment_2026-10-11.md"],
+      "status_note": "Tooling in place."
+    },
+    {
+      "id": "seo-basics",
+      "title": "SEO basics",
+      "track": "audience",
+      "stage": "shipped",
+      "one_liner": "Per-page canonical, a sitemap index per section, robots.txt and NewsArticle schema.",
+      "depends_on": ["core-pipeline"],
+      "story": {
+        "intent": "Make every event page something a search engine can find, index once and understand.",
+        "key_features": [
+          "Correct canonical on every page",
+          "Sitemap index split by section",
+          "robots.txt",
+          "NewsArticle structured data"
+        ],
+        "reasoning": "Search is the cheapest way to reach new readers. Every later page type (storylines, editions, releases) follows the same rule: own URL, title, canonical and sitemap entry.",
+        "open_questions": []
+      },
+      "docs": ["_status.md"],
+      "status_note": "Live."
+    },
+    {
+      "id": "quota-meter",
+      "title": "Subscription quota meter",
+      "track": "ops",
+      "stage": "shipped",
+      "one_liner": "The admin usage page shows how much of the Claude subscription quota the pipeline has used.",
+      "depends_on": ["core-pipeline"],
+      "story": {
+        "intent": "See at a glance how close the pipeline is to its subscription limits before adding anything that spends from the same quota.",
+        "key_features": [
+          "Short-window and weekly quota shown on the admin usage page"
+        ],
+        "reasoning": "New pipelines such as the tracker and the weekly briefing share one quota with the news pipeline. An earlier feature was killed for exhausting it.",
+        "open_questions": []
+      },
+      "docs": ["_status.md"],
+      "status_note": "Live on the admin usage page."
+    },
+    {
+      "id": "arc-test-set",
+      "title": "Known-arc test set",
+      "track": "trends",
+      "stage": "shipped",
+      "one_liner": "21 storylines we know happened and 240 gold pairs: the test any storyline method must pass.",
+      "depends_on": ["event-enrichment"],
+      "story": {
+        "intent": "Have a fixed answer key for 'do these two events belong to the same storyline?', so storyline quality is measured rather than judged by eye.",
+        "key_features": [
+          "21 known storylines drawn from our own events",
+          "240 labelled pairs, including 'same topic only' cases that must not be joined"
+        ],
+        "reasoning": "The earlier spike-based backtest missed two of three known arcs. This set replaces it as the test of record and gates everything public in trends.",
+        "open_questions": []
+      },
+      "docs": ["plan/plan_trends_v2_2026-11-11.md"],
+      "status_note": "Done: 21 storylines, 240 gold pairs."
+    },
+
+    {
+      "id": "trends-lists-insights",
+      "title": "Plain trend lists and model-free insights",
+      "track": "trends",
+      "stage": "building",
+      "one_liner": "New this week, Most covered and Building, plus insights computed by arithmetic alone.",
+      "depends_on": ["trend-index-internal", "event-enrichment"],
+      "story": {
+        "intent": "Say what changed in AI this week using plain counts a reader can check, instead of a blended score nobody can explain.",
+        "key_features": [
+          "Three separate lists: New this week, Most covered, Building",
+          "Counts beside every label, no momentum number, nothing shown below three events",
+          "Emerging pairs: an entity and a theme starting to appear together",
+          "Firsts: first appearances, and whether anyone followed",
+          "Sustained attention: topics present week after week",
+          "Shifts in the mix: themes, verified versus self-reported, new versus follow-up"
+        ],
+        "reasoning": "It needs no model and no storylines, so it could start straight away and costs nothing to run. It is also the last section of the weekly briefing.",
+        "open_questions": ["The lists still let through too much; thresholds need tightening before anyone but the owner sees them."]
+      },
+      "docs": ["plan/plan_trends_v2_2026-11-11.md"],
+      "status_note": "Built and merged, internal only. Lists still need tightening."
+    },
+    {
+      "id": "storyline-judge-eval",
+      "title": "Storyline judge evaluation",
+      "track": "trends",
+      "stage": "building",
+      "one_liner": "Which judge best answers 'same storyline?': Jev, Haiku or Sonnet, scored on the gold pairs.",
+      "depends_on": ["arc-test-set", "jev-dedup-related"],
+      "story": {
+        "intent": "Pick the model that decides storyline membership on evidence. Jev was validated on 'same event?', which is a different question.",
+        "key_features": [
+          "Each candidate judge scored on the 240 gold pairs",
+          "Accuracy weighed against cost per call",
+          "An explicit 'same topic only' answer, so related stories are not merged into one arc"
+        ],
+        "reasoning": "The judge is the part of the storylines engine most likely to be wrong, and it runs on every event. Choosing it first avoids building the engine around a judge that cannot recover the known arcs.",
+        "open_questions": ["Is the cheap judge good enough alone, or does it need a stronger model for uncertain pairs?"]
+      },
+      "docs": ["plan/plan_trends_v2_2026-11-11.md"],
+      "status_note": "Evaluation running."
+    },
+    {
+      "id": "signal-inventory",
+      "title": "Signal inventory",
+      "track": "trends",
+      "stage": "building",
+      "one_liner": "Use the signals we already store: who covered a story, how it spread, and what it led to.",
+      "depends_on": ["trend-index-internal", "jev-dedup-related"],
+      "story": {
+        "intent": "Squeeze the best possible trend data out of what is already in the database before reaching for anything external.",
+        "key_features": [
+          "Coverage by source class: mainstream, tech press, first-party, specialist, community, research",
+          "Crossover: a story moving from community to mainstream, with the lag",
+          "Curator votes: how many independent newsletters chose the story",
+          "Legs: coverage still arriving days later",
+          "Follow-up pull: the stories other stories are built on"
+        ],
+        "reasoning": "All of it is arithmetic over stored data, so it costs nothing to run. Mainstream pickup is the strongest confirmation of a story and community-only attention is the earliest sign.",
+        "open_questions": ["Source class is assigned per article domain and needs a small hand-kept table.", "Which signals earn a place on the lists and which stay internal?"]
+      },
+      "docs": ["plan/plan_trends_v2_2026-11-11.md"],
+      "status_note": "In progress (plan section 4F)."
+    },
+    {
+      "id": "storylines-engine",
+      "title": "Storylines engine",
+      "track": "trends",
+      "stage": "building",
+      "one_liner": "Group events into ongoing storylines, each with a scope statement, a ledger and a timeline page.",
+      "depends_on": ["storyline-judge-eval", "arc-test-set", "event-enrichment"],
+      "story": {
+        "intent": "Let a reader follow a thread, not a firehose. The slow arcs that matter are five to ten stories over weeks, which spike statistics cannot see; storylines are how they become visible.",
+        "key_features": [
+          "Membership judged against the storyline's one or two sentence scope statement, not its nearest member",
+          "Arc role as a linking rule: a development or reaction must find a parent; a new story seeds one",
+          "A ledger per storyline: date, actor, jurisdiction, arc role, claim basis, numbers, score",
+          "Timeline pages built from the ledger, with no generated prose at first",
+          "One primary storyline per event; dormant after a quiet month, closed after three"
+        ],
+        "reasoning": "It is the keystone: the weekly briefing, public trends, catch-me-up and the weekly podcast all draw on it. It must recover the known arcs in the test set before anything built on it is made public.",
+        "open_questions": ["Nothing published shows this recipe recovers slow arcs at our volume; the arc test is how we find out.", "When, if ever, to add a written 'story so far' on top of the ledger."]
+      },
+      "docs": ["plan/plan_trends_v2_2026-11-11.md", "features/storylines.md", "CURRENT_PHASE.md"],
+      "status_note": "Starts once the judge is chosen. Must pass the arc test before anything public."
+    },
+    {
+      "id": "daily-podcast",
+      "title": "Daily podcast",
+      "track": "audience",
+      "stage": "building",
+      "one_liner": "A daily audio briefing under five minutes: the day's high-signal events, ranked, in one voice.",
+      "depends_on": ["core-pipeline", "scoring-recalibration"],
+      "story": {
+        "intent": "An efficient 'catch me up on AI' for a commute or a coffee. The signal score is the differentiator: ranked, high-signal only, in five minutes.",
+        "key_features": [
+          "A listen test first: one sample episode the owner would actually subscribe to",
+          "Daily pipeline: select, script written for the ear, voice, assemble",
+          "Public podcast feed on the main platforms with no per-episode manual work",
+          "Fails safe: a broken run alerts instead of publishing a garbled episode"
+        ],
+        "reasoning": "It re-renders events that already exist, so marginal cost is low. Its daily selection is also what the daily newsletter and the X account will reuse, which is why it comes before them.",
+        "open_questions": ["Voice and script model are settled by the listen test.", "Which stage the build has reached; the spec in this repo still reads as planning."]
+      },
+      "docs": ["features/audio_briefing.md", "CURRENT_PHASE.md"],
+      "status_note": "In progress in another session; detail not confirmed from these docs."
+    },
+    {
+      "id": "capability-tracker",
+      "title": "Capability and release tracker",
+      "track": "trackers",
+      "stage": "building",
+      "one_liner": "A Releases tab: what AI coding tools and models can do now, change by change.",
+      "depends_on": ["load-party-fetcher", "jev-dedup-related", "community-features"],
+      "story": {
+        "intent": "Keep daily users of AI coding tools and frontier models current on what the tools can do now: each material change explained as what it is, why it matters, when to use it and how.",
+        "key_features": [
+          "Polls vendor changelogs and also diffs vendor docs, because some features ship only in docs",
+          "A gate that keeps bug fixes and polish out of the notable tier",
+          "Entries written only from vendor sources, with 'not documented by the vendor' where the source is silent",
+          "An 'In practice' section added in the first week from practitioner reactions",
+          "Same reading experience as News, with an RSS feed per product",
+          "A backfilled history so the tab is also a reference"
+        ],
+        "reasoning": "A backtest over the full Claude Code changelog showed the gate separates real features from fixes. It reuses the feed, reader and RSS machinery, so it is one product with two tabs rather than a second site.",
+        "open_questions": ["Which stage the build has reached; the feature doc still says planning, while the app repo has releases branches."]
+      },
+      "docs": ["features/capability_tracker.md", "plan/plan_capability_tracker_2026-10-11.md"],
+      "status_note": "In progress in another session; app repo has feat/releases branches, docs still say planning."
+    },
+
+    {
+      "id": "email-provider-signup",
+      "title": "Email provider and signup",
+      "track": "audience",
+      "stage": "next",
+      "one_liner": "A sending provider, a plain email signup, one-click unsubscribe and a send log.",
+      "depends_on": ["pipeline-alerting"],
+      "story": {
+        "intent": "The plumbing every email product needs, built once: a way to collect addresses, send reliably and stop the moment someone asks.",
+        "key_features": [
+          "A chosen email provider with a properly authenticated sending domain",
+          "Plain signup with no account needed",
+          "One-click unsubscribe honoured immediately",
+          "Bounces and complaints suppress the address automatically",
+          "A send log so no edition is ever sent twice"
+        ],
+        "reasoning": "The daily newsletter, the weekly newsletter and the per-reader digest all wait on it. It has no dependency on trends or the podcast, so it can be done as soon as someone picks it up.",
+        "open_questions": ["Which provider; pricing and free tiers need checking at build time.", "Which sending domain or subdomain."]
+      },
+      "docs": ["features/email_digest.md"],
+      "status_note": "Not started. Nothing blocks it."
+    },
+    {
+      "id": "seo-followups",
+      "title": "SEO follow-ups",
+      "track": "audience",
+      "stage": "next",
+      "one_liner": "Register the site with Search Console and add Cloudflare bot rules.",
+      "depends_on": ["seo-basics"],
+      "story": {
+        "intent": "Finish the search groundwork: see how the site is indexed, and stop scrapers from drowning out real readers in the numbers.",
+        "key_features": [
+          "Search Console registration and sitemap submission",
+          "Cloudflare rules for abusive bots"
+        ],
+        "reasoning": "Both need the owner's accounts, so they wait on him rather than on any build. Clean traffic numbers matter before judging whether weekly posts earn readers.",
+        "open_questions": []
+      },
+      "docs": ["_status.md"],
+      "status_note": "Waiting on the owner (account access)."
+    },
+    {
+      "id": "weekly-briefing-trial",
+      "title": "Weekly 'what changed' briefing: private trial",
+      "track": "trends",
+      "stage": "next",
+      "one_liner": "A weekly briefing of claims with the events behind them, sent only to the owner for three weeks.",
+      "depends_on": ["trends-lists-insights", "storylines-engine"],
+      "story": {
+        "intent": "State what changed in AI this week as a handful of claims, each backed by the events that show it. The explanation is the product; a list without a reason is not.",
+        "key_features": [
+          "Numbers that moved: figures revised, escalated or contradicted",
+          "Claimed, then confirmed: promises and self-reported claims later corroborated or disputed",
+          "What changed in each active storyline",
+          "New players and spread: who entered, new jurisdictions",
+          "The three lists",
+          "Code computes every count; the model writes two or three sentences per item, each citing events; a validator checks ids, dates and numbers"
+        ],
+        "reasoning": "Machine-written trend prose is the riskiest piece, so it goes to one reader first. Three weeks with the owner judging at least seven of ten items right is the gate for anything public.",
+        "open_questions": ["Is seven of ten the right bar?", "Extracted number ranges must be fixed before the first section can be trusted."]
+      },
+      "docs": ["plan/plan_trends_v2_2026-11-11.md"],
+      "status_note": "Not started."
+    },
+    {
+      "id": "public-trends-surface",
+      "title": "Public trends: weekly post, trends page, storyline pages",
+      "track": "trends",
+      "stage": "next",
+      "one_liner": "The weekly briefing published as a post, a light trends page, and public storyline pages.",
+      "depends_on": ["weekly-briefing-trial", "storylines-engine"],
+      "story": {
+        "intent": "Give readers and search engines somewhere to see what is new, what is building and how each ongoing story has unfolded.",
+        "key_features": [
+          "A weekly 'what changed' post with its own URL",
+          "A light trends page showing the three lists with plain counts",
+          "A page per storyline with its timeline, and 'part of' links from events"
+        ],
+        "reasoning": "Fully automatic trend lists with no checking have failed in public before. This ships only after the private trial passes and storylines recover the known arcs.",
+        "open_questions": ["Which themes and entities are shown publicly and which stay internal."]
+      },
+      "docs": ["plan/plan_trends_v2_2026-11-11.md", "features/storylines.md"],
+      "status_note": "Gated on the trial and the arc test."
+    },
+    {
+      "id": "newsletter-daily",
+      "title": "Goblin News newsletter: daily",
+      "track": "audience",
+      "stage": "next",
+      "one_liner": "One brief daily email, the same for everyone, matching that day's podcast episode.",
+      "depends_on": ["daily-podcast", "email-provider-signup"],
+      "story": {
+        "intent": "A quick daily read to keep up, with no account and no settings. It is the thing a visitor from search or social can subscribe to, and the first audience we own.",
+        "key_features": [
+          "The day's top events, each with a one-line 'why it matters' and a link",
+          "Same selection and order as the day's podcast episode, with a listen link",
+          "Each edition is also a web page with its own URL, so the archive is indexable",
+          "Short: a few minutes to read"
+        ],
+        "reasoning": "It reuses the podcast's daily selection so the script and the email never disagree, which is why it follows the podcast. It is its own product, separate from the per-reader digest.",
+        "open_questions": ["Send time and whether weekends get an edition."]
+      },
+      "docs": ["features/email_digest.md", "features/ROADMAP.md"],
+      "status_note": "Not started."
+    },
+    {
+      "id": "newsletter-weekly",
+      "title": "Goblin News newsletter: weekly",
+      "track": "audience",
+      "stage": "next",
+      "one_liner": "The weekly catch-up edition: top news, a trends section and our other content.",
+      "depends_on": ["email-provider-signup", "weekly-briefing-trial"],
+      "story": {
+        "intent": "One email a week for people who do not want a daily one: what mattered, what is changing, and what else we made.",
+        "key_features": [
+          "The week's top events",
+          "A trends section: what is new, what is building, a number that moved, a storyline that advanced",
+          "Other content: podcast episodes, guides, forum discussions worth reading",
+          "Also published as a web page"
+        ],
+        "reasoning": "The trends section is what sets it apart from other AI newsletters, none of which compute trends from their own record. It therefore waits for the briefing to prove itself in the private trial.",
+        "open_questions": ["Whether a first weekly edition could ship with news only, before the trends section is ready."]
+      },
+      "docs": ["features/email_digest.md", "plan/plan_trends_v2_2026-11-11.md"],
+      "status_note": "Not started."
+    },
+    {
+      "id": "x-account",
+      "title": "Automated X account",
+      "track": "audience",
+      "stage": "next",
+      "one_liner": "A Goblin News account posting a very short daily summary and a weekly recap.",
+      "depends_on": ["newsletter-daily"],
+      "story": {
+        "intent": "Somewhere people can follow to keep up, which builds visibility over time and gives paid promotion something to point at.",
+        "key_features": [
+          "A short daily post: what everyone needs to know",
+          "A weekly recap",
+          "Every post links back to that day's edition page"
+        ],
+        "reasoning": "The content comes from the same daily and weekly editions as the newsletter and podcast, so it is close to free once those exist. It needs the edition page to link to.",
+        "open_questions": ["X API posting limits and cost must be checked before building.", "The weekly recap follows the weekly newsletter."]
+      },
+      "docs": ["features/ROADMAP.md"],
+      "status_note": "Not started."
+    },
+    {
+      "id": "email-digest",
+      "title": "Per-reader filtered email digest",
+      "track": "audience",
+      "stage": "next",
+      "one_liner": "A daily or weekly email of the events matching each signed-in reader's saved filters.",
+      "depends_on": ["email-provider-signup", "forum-signin"],
+      "story": {
+        "intent": "Bring signed-in readers back on a habit with only the events they asked for. The site is pull; this is push.",
+        "key_features": [
+          "Opt in to daily or weekly, or off, from preferences",
+          "Uses the filters the reader already saved on the site",
+          "Sent in the reader's morning; never sends an empty digest",
+          "First version is a plain template with no model involved"
+        ],
+        "reasoning": "It serves readers who already have an account, so it matters less than the newsletter while there are few of them. It shares the provider, unsubscribe and send log with the newsletter.",
+        "open_questions": ["Sign-in does not yet store the reader's email address; that small change comes first."]
+      },
+      "docs": ["features/email_digest.md", "CURRENT_PHASE.md"],
+      "status_note": "Specified; not started."
+    },
+
+    {
+      "id": "weekly-recap-podcast",
+      "title": "Weekly recap podcast episode",
+      "track": "audience",
+      "stage": "idea",
+      "one_liner": "A slightly longer weekly episode that ties the week's storylines together.",
+      "depends_on": ["daily-podcast", "storylines-engine"],
+      "story": {
+        "intent": "A weekend listen that explains the week rather than listing it.",
+        "key_features": ["Reuses the daily audio pipeline with a different selection and script", "Built around the week's active storylines"],
+        "reasoning": "Without storylines it would be a longer daily episode. It waits for both the daily show and the storylines engine.",
+        "open_questions": []
+      },
+      "docs": ["features/audio_briefing.md"],
+      "status_note": ""
+    },
+    {
+      "id": "catch-me-up",
+      "title": "Catch me up",
+      "track": "trends",
+      "stage": "idea",
+      "one_liner": "'I have been away for two weeks': a summary of what moved, by storyline.",
+      "depends_on": ["storylines-engine"],
+      "story": {
+        "intent": "Let a returning reader get current in one page instead of scrolling back through the feed.",
+        "key_features": ["Storyline changes since a chosen point", "Links to the events behind each change"],
+        "reasoning": "It is a different view of the storyline ledger, so it is cheap once storylines exist and impossible before.",
+        "open_questions": []
+      },
+      "docs": ["features/storylines.md"],
+      "status_note": ""
+    },
+    {
+      "id": "what-happened-with",
+      "title": "What happened with X",
+      "track": "trends",
+      "stage": "idea",
+      "one_liner": "Ask about a company, model or topic and get the relevant storylines back.",
+      "depends_on": ["storylines-engine"],
+      "story": {
+        "intent": "Answer a question about an ongoing story with the story so far, not a list of headlines.",
+        "key_features": ["A query returns the matching storylines and their timelines"],
+        "reasoning": "Needs storylines to exist, and overlaps with semantic search; decide together.",
+        "open_questions": ["Is this a search feature or its own page?"]
+      },
+      "docs": ["features/storylines.md", "features/hybrid_search.md"],
+      "status_note": ""
+    },
+    {
+      "id": "storyline-follow-emails",
+      "title": "Follow a storyline by email",
+      "track": "audience",
+      "stage": "idea",
+      "one_liner": "Follow a storyline and get an email when it moves.",
+      "depends_on": ["storylines-engine", "email-digest"],
+      "story": {
+        "intent": "Topic-scoped email for readers who care about one thread, not the whole feed.",
+        "key_features": ["A follow button on storyline pages", "An email when the storyline gains an event"],
+        "reasoning": "Described as the third version of the email digest. It needs both storylines and per-reader email in place.",
+        "open_questions": []
+      },
+      "docs": ["features/email_digest.md", "features/storylines.md"],
+      "status_note": ""
+    },
+    {
+      "id": "trends-explorer",
+      "title": "Interactive trends explorer",
+      "track": "trends",
+      "stage": "idea",
+      "one_liner": "Explore themes and entities over time with date filters and search.",
+      "depends_on": ["public-trends-surface"],
+      "story": {
+        "intent": "Let curious readers dig into the history behind the weekly post.",
+        "key_features": ["Date range filters", "Search by theme or entity", "History charts with plain counts"],
+        "reasoning": "Readers ask for curation and 'why it matters', not dashboards. Build it only if the weekly posts earn traffic.",
+        "open_questions": []
+      },
+      "docs": ["plan/plan_trends_v2_2026-11-11.md"],
+      "status_note": "Only if the weekly posts earn traffic."
+    },
+    {
+      "id": "below-bar-chatter",
+      "title": "Below-the-bar chatter as an early signal",
+      "track": "trends",
+      "stage": "idea",
+      "one_liner": "Track entities recurring in clusters that scored too low to publish.",
+      "depends_on": ["signal-inventory"],
+      "story": {
+        "intent": "Spot what is about to clear the bar by watching what keeps almost clearing it.",
+        "key_features": ["Tag entities in skipped clusters", "An 'early' list ranked by recurrence"],
+        "reasoning": "It is the only item in the signal inventory with a model cost, so it comes after the free signals have been used.",
+        "open_questions": ["Is the signal real? It needs a look-back test first."]
+      },
+      "docs": ["plan/plan_trends_v2_2026-11-11.md"],
+      "status_note": ""
+    },
+    {
+      "id": "external-signals",
+      "title": "External signals",
+      "track": "trends",
+      "stage": "idea",
+      "one_liner": "GitHub stars, model usage share and search interest alongside our own record.",
+      "depends_on": ["signal-inventory"],
+      "story": {
+        "intent": "Add outside evidence of adoption to stories we already track.",
+        "key_features": ["GitHub stars and model downloads", "Model usage share", "Search interest"],
+        "reasoning": "Each source needs its own fetch path and upkeep. Our own data comes first.",
+        "open_questions": []
+      },
+      "docs": ["plan/plan_trends_v2_2026-11-11.md"],
+      "status_note": ""
+    },
+    {
+      "id": "paid-promotion",
+      "title": "Paid promotion",
+      "track": "audience",
+      "stage": "idea",
+      "one_liner": "Ads that ask people to follow the X account or sign up for the newsletter.",
+      "depends_on": ["x-account", "newsletter-daily", "seo-followups"],
+      "story": {
+        "intent": "Buy the first readers once there is something for them to subscribe to and a way to measure whether they stay.",
+        "key_features": ["Small test budgets", "Follow and signup as the goals"],
+        "reasoning": "Pointless before there is a newsletter or account to point at, or before traffic can be measured cleanly.",
+        "open_questions": ["Budget and channel."]
+      },
+      "docs": ["features/ROADMAP.md"],
+      "status_note": ""
+    },
+    {
+      "id": "reader-acquisition-research",
+      "title": "Reader acquisition research",
+      "track": "audience",
+      "stage": "idea",
+      "one_liner": "Work out where readers of AI news come from and what makes them subscribe.",
+      "depends_on": [],
+      "story": {
+        "intent": "Decide where to spend effort on growth using evidence rather than guesses.",
+        "key_features": ["How comparable products found their first readers", "Which channels fit a small, automated publication"],
+        "reasoning": "Traffic is a handful of people a day. Research is cheap and can run at any time.",
+        "open_questions": []
+      },
+      "docs": [],
+      "status_note": ""
+    },
+    {
+      "id": "analytics-custom-events",
+      "title": "Reader behaviour analytics",
+      "track": "ops",
+      "stage": "idea",
+      "one_liner": "Track event opens, discuss clicks, votes, bookmarks and subscribe clicks, not only page views.",
+      "depends_on": ["umami-analytics"],
+      "story": {
+        "intent": "See what readers do, so distribution experiments can be judged on behaviour.",
+        "key_features": ["Custom events for the actions that matter", "Read access for agents to analyse the data"],
+        "reasoning": "An open item on the current phase checklist. More useful once the newsletter and podcast bring traffic.",
+        "open_questions": []
+      },
+      "docs": ["CURRENT_PHASE.md"],
+      "status_note": "Open checklist item; not scheduled."
+    },
+    {
+      "id": "hybrid-search",
+      "title": "Semantic search",
+      "track": "core",
+      "stage": "idea",
+      "one_liner": "Search that finds what you mean, combining keyword and meaning-based matching.",
+      "depends_on": ["core-pipeline"],
+      "story": {
+        "intent": "A search for 'claude subscriptions' should find 'Anthropic revenue doubles'.",
+        "key_features": ["Keyword and semantic results merged, exact matches ranked first"],
+        "reasoning": "Planned early and never scheduled. Worth revisiting alongside 'what happened with X'.",
+        "open_questions": []
+      },
+      "docs": ["features/hybrid_search.md"],
+      "status_note": "Planned; not scheduled."
+    },
+    {
+      "id": "ui-polish",
+      "title": "UI polish backlog",
+      "track": "core",
+      "stage": "idea",
+      "one_liner": "Small confirmed fixes: About page screenshots, quick wins, keyboard shortcuts.",
+      "depends_on": [],
+      "story": {
+        "intent": "Tidy the reading experience when there is bandwidth.",
+        "key_features": ["About page shows the product instead of describing it", "A list of quick wins under half an hour each"],
+        "reasoning": "None of it changes what the product is, so it fills gaps between larger pieces.",
+        "open_questions": []
+      },
+      "docs": ["features/ui_polish_backlog.md"],
+      "status_note": ""
+    },
+    {
+      "id": "discord-slack-push",
+      "title": "Discord and Slack push",
+      "track": "audience",
+      "stage": "idea",
+      "one_liner": "Post events into community channels. Parked until someone asks for it.",
+      "depends_on": [],
+      "story": {
+        "intent": "Deliver events where some teams already talk.",
+        "key_features": ["A webhook per subscriber with retries"],
+        "reasoning": "Push means a subscriber registry and ongoing upkeep, unlike RSS or a podcast feed. Parked until requested.",
+        "open_questions": []
+      },
+      "docs": ["features/ROADMAP.md"],
+      "status_note": "Parked."
+    },
+
+    {
+      "id": "public-momentum-index",
+      "title": "Public trending score and momentum index",
+      "track": "trends",
+      "stage": "dropped",
+      "one_liner": "A single public 'trending' number per theme and entity.",
+      "depends_on": [],
+      "story": {
+        "intent": "Show what is hot as a ranked index with a momentum score.",
+        "key_features": [],
+        "reasoning": "It hit all three of its own stop conditions: it missed two of three known arcs, almost nothing cleared the gate, and adding sources moved the charts. At our volume the test can only detect spikes, and real arcs are slow. Replaced by plain lists and storylines.",
+        "open_questions": []
+      },
+      "docs": ["plan/plan_trends_v2_2026-11-11.md", "plan/plan_trends_and_enrichment_2026-10-11.md"],
+      "status_note": "Dropped. The spike test survives as an internal signal only."
+    },
+    {
+      "id": "scorer-trend-hook",
+      "title": "Trend input to the scorer",
+      "track": "core",
+      "stage": "dropped",
+      "one_liner": "Let a trending subject nudge an event's score from 6 to 7.",
+      "depends_on": [],
+      "story": {
+        "intent": "Have later stories in a wave count for more because of the wave.",
+        "key_features": [],
+        "reasoning": "It would feed an unvalidated signal into scoring, and scores feed the trend, so it risks a loop. The gain was a one-point nudge.",
+        "open_questions": []
+      },
+      "docs": ["plan/plan_trends_v2_2026-11-11.md"],
+      "status_note": "Dropped."
+    },
+    {
+      "id": "event-calendar",
+      "title": "AI event calendar",
+      "track": "core",
+      "stage": "dropped",
+      "one_liner": "A calendar of upcoming AI conferences, launches and deadlines.",
+      "depends_on": [],
+      "story": {
+        "intent": "A second content type: what is coming up in AI.",
+        "key_features": [],
+        "reasoning": "Built, then archived. It was effectively a second product and its discovery pipeline used too much of the shared model quota. The archive doc has a revival recipe.",
+        "open_questions": []
+      },
+      "docs": ["features/event_calendar.md"],
+      "status_note": "Killed after being built; archived."
+    },
+    {
+      "id": "curated-content",
+      "title": "Curated blogs and research",
+      "track": "core",
+      "stage": "dropped",
+      "one_liner": "Dedicated pipelines for notable blog posts and research papers.",
+      "depends_on": [],
+      "story": {
+        "intent": "Surface the best long-form writing and papers alongside news.",
+        "key_features": [],
+        "reasoning": "The news pipeline already picks up noteworthy research and posts. Dedicated pipelines are costly and hard to tune, and the forum is a better home for community picks.",
+        "open_questions": []
+      },
+      "docs": ["features/curated_content.md"],
+      "status_note": "Deferred indefinitely; see the decision record."
+    }
+  ]
+}
