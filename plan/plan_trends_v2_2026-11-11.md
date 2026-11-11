@@ -2,7 +2,7 @@
 
 ---
 type: plan
-status: proposed — awaiting Mike's go on direction and one recurring cost
+status: approved by Mike 2026-11-11 — building
 last_updated: 2026-11-11
 supersedes: the public "trending index" parts of plan_trends_and_enrichment_2026-10-11.md (steps 5-7, 9)
 research: outbox/trend_research_methods_2026-11-11.md, outbox/trend_research_storylines_2026-11-11.md,
