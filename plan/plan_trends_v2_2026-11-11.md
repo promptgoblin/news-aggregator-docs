@@ -161,7 +161,8 @@ whether it or Haiku judges.
 3. Lists (A), the arithmetic insights (C2) and ledger pages on an internal admin page; statistics changes (D).
    C2 does not depend on storylines and can start in parallel with step 1.
 4. Briefing sections C1-C5 with the validator; weekly DM to Mike for three weeks.
-5. Public surface only after the DM passes 7 of 10.
+5. Public surface only after the DM passes 7 of 10. The weekly post is also the **weekly newsletter** edition
+   (see the 2026-11-11 note at the top of features/email_digest.md); the daily newsletter pairs with the daily podcast.
 
 ## 7. Where the evidence is thin
 

@@ -7,13 +7,27 @@ complexity: C3
 tags: [email, digest, retention, growth, esp]
 depends_on: [production_deployment]
 required_by: []
-last_updated: 2026-07-08
+last_updated: 2026-11-11
 author: mike + Claude (co-founder session)
 ---
 
 > **BUILD AGENT (Opus):** This is a planning spec, not a finished design — implement to match **User Intent**, not just the letter of each step. Read the whole doc before writing code; the **Gotchas (§8)** and **Cost (§9)** sections override naïve choices made earlier. Several ESP- and email-standard-specific details were written against a **Jan 2026 knowledge cutoff** — every place tagged **[VERIFY]** must be re-checked against live provider docs at build time (ESP pricing/free-tier limits, `List-Unsubscribe-Post` one-click behavior, DMARC/BIMI norms, deliverability rules).
 >
 > **Non-negotiable design principle:** this feature *re-renders an existing asset* (the distilled, scored event) into an email. It is the **text sibling of the audio briefing** (`features/audio_briefing.md`) and shares its infrastructure — scheduled job, advisory-lock pattern, `llm_client.py`, timezone handling, `_build_event_query`. If you find yourself re-distilling, re-scoring, or building a second event query, stop — reuse the pipeline's existing outputs and the existing per-user filter machinery.
+
+> **ADDED 2026-11-11 (Mike): editorial newsletters that complement the daily podcast.** Do not forget.
+> Alongside the per-user filtered digest specced below, ship two **editorial editions, the same for every subscriber**:
+> - **Daily newsletter** = the text companion of the daily podcast (`features/audio_briefing.md`): same selection and
+>   order as that day's episode, each item with its one-line "why it matters" and a link, plus the listen link. One
+>   editorial pass produces both the script and the email, so the two never disagree.
+> - **Weekly newsletter** = the Trends v2 "what changed this week" post (`plan/plan_trends_v2_2026-11-11.md` §4C):
+>   five to eight claims, each with one number and the events behind it, linking to storyline pages and to the weekly
+>   recap episode.
+> Why editorial editions matter beyond the personalised digest: they need **no account and no saved filters** (plain
+> email signup), so they are the thing a search or social visitor can subscribe to, and they are the first audience we
+> own. Each edition is also published as a web page with its own URL, title, canonical and sitemap entry (global SEO
+> rule), so the archive is indexable. Sequencing: weekly first (its content exists once the Trends v2 DM trial passes),
+> daily when the podcast's daily pipeline is live. Shares the ESP, unsubscribe and send-log work in this spec.
 
 ---
 

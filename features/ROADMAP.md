@@ -31,6 +31,7 @@
 | 10 | **Audio Briefing** (daily/weekly podcast) | C3 | [audio_briefing.md](audio_briefing.md) | Planning (spec'd 2026-07) |
 | 11 | **Storylines** (living-thread pages + synthesis engine) | C3 | [storylines.md](storylines.md) | Planning (spec'd 2026-07) — unlocks catch-me-up, "what happened with X", topic emails, social drafts |
 | 12 | **Email Digest** (daily/weekly, per-user filters) | C2 | [email_digest.md](email_digest.md) | Planning (spec'd 2026-07) |
+| 13 | **Capability Tracker** (Releases tab: coding-tool + model changes, docs diff, In-practice) | C3 | [capability_tracker.md](capability_tracker.md) | Planning (plan 2026-10-11) — vetted with a Jev backtest 2026-09-26 |
 
 **Sequencing note (2026-07-08):** Audio and Storylines are the two high-leverage plays; the Email Digest shares infra with both (scheduled job + `llm_client.py` + tz). Storylines is the engine that also powers catch-me-up / semantic-ask / topic-emails / social — highest leverage per build. User-facing generation (storylines, email intros, catch-up) runs on **DeepSeek via `llm_client.py`**, NOT the Claude subscription (the sub can't serve per-user features). Discord/Slack push bot = **parked** until requested (push model = per-subscriber webhook registry + retries = ongoing surface area, unlike pull-based RSS/podcast).
 
