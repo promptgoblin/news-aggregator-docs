@@ -36,7 +36,7 @@ the diff. Same mechanics as the news feed so it is one product with two tabs.
 4. Day 3 and day 7: the entry gains an "In practice" section and an Updated badge, re-surfacing it.
 5. User subscribes to the product RSS feed in their reader to get only that tool's diff.
 
-## Status: Live (Claude Code), other products dark
+## Status: Live for the six tools; model families dark
 **Started**: 2026-10-11
 **Last Updated**: 2026-11-11
 
@@ -107,6 +107,7 @@ Cron: daily 05:10 UTC, digests Monday 07:10 UTC (`deploy/cron/pipeline-cron`), l
 - If a releases run overlaps a news run, the news cost-anomaly rule counts its LLM spend.
 
 ## Open
-- Widen `is_live` beyond Claude Code after the first entries are reviewed.
+- Model families: the register seeds a change with the news headline as its title and score 9, and some seeds are rumours or availability stories. Seeds need an editor pass (title, score, drop) before `is_live` is set for the three families (tried and reverted 2026-11-13).
+- Admin feedback notes (`GET /api/admin/releases/feedback`) are read in bulk and distilled into prompt rules.
 - Grouping granularity: families of small API lines (eight separate "Mod ..." changes) are not folded.
 - Follows and alerts per product (v2); long-form derived guides.
