@@ -1,10 +1,7 @@
 {
-  "updated": "2026-11-11",
+  "title": "Goblin News roadmap",
+  "updated": "2026-11-13",
   "tracks": [
-    {
-      "id": "core",
-      "name": "Core pipeline and site"
-    },
     {
       "id": "trends",
       "name": "Trends and storylines"
@@ -16,6 +13,10 @@
     {
       "id": "trackers",
       "name": "Trackers"
+    },
+    {
+      "id": "core",
+      "name": "Core pipeline and site"
     },
     {
       "id": "ops",

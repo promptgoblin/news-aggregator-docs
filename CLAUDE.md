@@ -66,7 +66,8 @@ See `docs/_framework/guide_complexity_levels.md` for detailed criteria.
 
 ## Roadmap discipline
 
-- The visual roadmap at `roadmap/roadmap.html` is generated from `roadmap/roadmap.json`. Never edit the HTML by hand.
-- Update the JSON whenever a feature's stage, dependencies or intent changes (started, shipped, dropped, re-sequenced, new idea), in the same commit as that work's docs.
-- Rebuild with `python3 roadmap/build_roadmap.py --copy-to /home/mike/dev/promptgoblins/outbox` and commit both `roadmap.json` and `roadmap.html`.
-- Sequence and dependencies only, no dates. Stories are plain-language intent, key features and reasoning for the owner, not specs. Rules and schema: `roadmap/README.md`.
+- The visual roadmap at `roadmap/roadmap.html` is generated from `roadmap/roadmap.json` by the shared Command Center roadmap kit. Never edit the HTML by hand, and never add a template or build script to this repo. Load the `roadmap` skill before touching it.
+- Update the JSON whenever a feature's stage, dependencies or intent changes (started, shipped, dropped, re-sequenced, new idea), in the same commit as that work's docs. Keep item ids stable.
+- Rebuild with `python3 /home/mike/dev/command-center/integrations/roadmap-kit/build_roadmap.py --json roadmap/roadmap.json` and commit `roadmap.json` with the generated files. Command Center shows it by itself; no outbox copy.
+- Sequence and dependencies only, no dates. Stories are plain-language intent, key features and reasoning for the owner, not specs. Do not redesign the page; raise design changes with Mike.
+- Mike can leave steering on roadmap items in Command Center; open steering appears in session-start context. Apply it, rebuild, and resolve it as the skill describes.
